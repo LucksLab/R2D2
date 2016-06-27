@@ -1,7 +1,7 @@
 """
 Parallel Cotranscriptional Structure Utilities (PCSU)
 
-Version: 0.0.0
+Version: 0.0.1
 Author: Angela M Yu, 2014-2016
 """
 
@@ -170,8 +170,8 @@ def generate_DG_output(cotrans, start=-1, end=-1):
             dump.write("\n".join(line))
             dump.write("\n")
 
-    print "/usr/local/R/icse/bin/R < make_DG_state_plot.R --no-save --args %s/DG_state_plot.pdf %s/DG_state_plot.dump %s %s" % (cotrans.output_dir, cotrans.output_dir, start, end)
-    OSU.system_command("/usr/local/R/icse/bin/R < make_DG_state_plot.R --no-save --args %s/DG_state_plot.pdf %s/DG_state_plot.dump %s %s" % (cotrans.output_dir, cotrans.output_dir, start, end))
+    print "R < make_DG_state_plot.R --no-save --args %s/DG_state_plot.pdf %s/DG_state_plot.dump %s %s" % (cotrans.output_dir, cotrans.output_dir, start, end)
+    OSU.system_command("R < make_DG_state_plot.R --no-save --args %s/DG_state_plot.pdf %s/DG_state_plot.dump %s %s" % (cotrans.output_dir, cotrans.output_dir, start, end))
     return
 
 
