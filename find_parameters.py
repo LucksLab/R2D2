@@ -1,7 +1,7 @@
 """
 Benchmarking code R2D2 (Reconstructing RNA Dynamics from Data) using grid
 search on different parameter sets.
-Version: 0.0.0
+Version: 0.0.1
 Author: Angela M Yu, 2014-2016
 
 There may be different naming conventions of the input files, so the code
@@ -24,12 +24,11 @@ import cPickle as pickle
 # setup environment variables specific to the ICSE cluster at Cornell
 LucksLabUtils_config.config("ICSE")
 opts = OSU.getopts("o:c:r:n:p:",
-                   ["noshape", "shape", "constrain", "pseudoknots", "keys=",
+                   ["noshape", "shape", "constrain", "pseudoknots",
                     "best_dist_func=", "scaling_func=", "cluster_flag=",
                     "job_name=", "sub_proc=", "arg_slice=", "load_results=",
                     "generate_structs=", "structs_pickle_dir=", "cap_rhos=",
-                    "add_crystal_struct", "shape_intercept=", "shape_slope=",
-                    "restart"])
+                    "shape_intercept=", "shape_slope=", "restart"])
 print opts
 
 reactivities_files = glob.glob(opts['-r'])
@@ -50,19 +49,11 @@ shape_intercept = float(opts["--shape_intercept"]) \
                     if "--shape_intercept" in opts else -0.3
 shape_slope = float(opts["--shape_slope"]) if "--shape_slope" in opts else 1.1
 
-restrict = []
-if '--keys' in opts:  # remove these keys from analysis
-    restrict = opts['--keys'].split(",")
-
 OSU.create_directory(output_dir)
 reactivities = PAU.parse_input_panels(reactivities_files, output_dir)
 crystals = PAU.parse_input_panels(crystal_files, output_dir)
 
-for k in restrict:
-    crystals.pop(k, None)
-    reactivities.pop(k, None)
-
-if set(crystals.keys()) != set(reactivities.keys()):
+if set(crystals.keys()) != set([rk.split('-')[0] for rk in reactivities.keys()]):
     raise Exception("Keys of crystal structures and reactivities not equal")
 
 outname = "diffs_all.txt"
@@ -72,7 +63,8 @@ outname = "diffs_all.txt"
 for k, v in reactivities.iteritems():
     react_rhos = v[0]
     react_seq = v[1]
-    cryst_seq = crystals[k][1]
+    ck = k.split('-')[0]  # corresponding crystal key from the reactivity key
+    cryst_seq = crystals[ck][1]
     ind_of_match = react_seq.index(cryst_seq)
     end_of_match = ind_of_match + len(cryst_seq)
     # renormalize rhos based on matching regions
@@ -139,9 +131,10 @@ if generate_structs:
     for constrain_val in constrain_vals:
         constrained_folds = {}
         for k in reactivities:
+            ck = k.split('-')[0]  # corresponding crystal key from the reactivity key
             XB = SU.get_indices_rho_gt_c(reactivities[k][0], constrain_val, one_index=True)
             SU.make_constraint_file(structs_pickle_dir + "/temp_c%s.con" % (str(constrain_val)), [], XB, [], [], [], [], [], [])
-            seqfile = NAU.make_seq(crystals[k][1], structs_pickle_dir+"temp_c%s.seq" % (str(constrain_val)))
+            seqfile = NAU.make_seq(crystals[ck][1], structs_pickle_dir+"temp_c%s.seq" % (str(constrain_val)))
             sampled_counts, sampled = SU.RNAstructure_sample(reactivities[k][2], sample_n, structs_pickle_dir, seqfile, shapefile="", constraintfile=structs_pickle_dir + "/temp_c%s.con" % (str(constrain_val)), label="constrain_"+str(constrain_val), num_proc=1, shape_slope=shape_slope, shape_intercept=shape_intercept)
             constrained_folds[k] = sampled
             OSU.remove_files([structs_pickle_dir + "/temp_c%s.con" % (str(constrain_val)), structs_pickle_dir+"temp_c%s.seq" % (str(constrain_val))])
