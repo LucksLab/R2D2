@@ -75,7 +75,7 @@ def runRNAstructure_CircleCompare(predicted_ct, accepted_ct, outputfile, shape="
     """
     cmd = 'CircleCompare -e %s %s %s' % (predicted_ct, accepted_ct, outputfile)
     if shape != "":
-        cmd += " -SHAPE %s " % (shape)
+        cmd += " -SHAPE %s > /dev/null" % (shape)
     os.system(cmd)
 
 
@@ -641,4 +641,5 @@ def calc_benchmark_statistics_matrix(react_mat, ct_mat):
     bm_stats["F_score"] = 2*TP / float(2*TP + FN + FP)
     bm_stats["Sensitivity"] = TP / float(TP + FN)
     bm_stats["PPV"] = TP / float(TP + FP)
+    print "Benchmark statistics: " + str(bm_stats)
     return bm_stats

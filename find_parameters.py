@@ -1,6 +1,10 @@
 """
-Benchmarking code R2D2 (Reconstructing RNA Dynamics from Data) using grid
+find_parameters.py
+
+Benchmarking code for R2D2 (Reconstructing RNA Dynamics from Data) using grid
 search on different parameter sets.
+Developed specifically for the ICSE cluster.
+
 Version: 0.0.1
 Author: Angela M Yu, 2014-2016
 
@@ -8,6 +12,34 @@ There may be different naming conventions of the input files, so the code
 assumes input files to be of the form:
  *_(\w+).ct and *_(\w+)_reactivities.txt
 Matching (\w+) will be compared and (\w+) is assumed to be a unique tag.
+
+Usage:
+python find_parameters.py <OPTIONS>
+
+OPTIONS:
+-r                   = reactivity files regex
+-c                   = .ct files ofcrystal structures regex
+-o                   = output directory
+-n                   = number of structures to sample
+-p                   = number of threads
+--scaling_func       = Choice of distance function when choosing the best structure:
+                            D: Bound to be between [0,1]
+                            U: Rescale sampled structures to average to 1
+                            K: Keep sampled structures and reactivities values. If cap_rhos is True, then reactivities will be capped.
+--cap_rhos           = Flag to have a max cutoff for reactivities when calculating distances for choosing the best structure
+--cluster_flag       = Flag to start subjob submission to NBS cluster.
+--job_name           = Name of job
+--sub_proc           = Flag to distinguish parent or subprocess
+--load_results       = Flag to load results from subprocesses
+--generate_structs   = Flag to turn on generation of sampled structures
+--structs_pickle_dir = Where to store and load sampled structures
+--shape_intercept    = Intercept used with SHAPE restraints in RNAstructure. Default: -0.3
+--shape_slope        = Slope used with SHAPE restraints in RNAstructure. Default: 1.1
+--noshape            = Sample structures from sequence only
+--shape              = Sample structures from a SHAPE-directed partition function
+--constrain          = Sampled structures from a hard-constrained partition function where bases are forced single stranded if SHAPE value greater than a threshold
+--arg_slice          = Specific parameters to test. ex. '(2.3, 2.3, 0.5)'
+--restart            = Option to load previously started benchmarking. Use if parent process is somehow aborted.
 """
 
 import glob
@@ -24,8 +56,8 @@ import cPickle as pickle
 # setup environment variables specific to the ICSE cluster at Cornell
 LucksLabUtils_config.config("ICSE")
 opts = OSU.getopts("o:c:r:n:p:",
-                   ["noshape", "shape", "constrain", "pseudoknots",
-                    "best_dist_func=", "scaling_func=", "cluster_flag=",
+                   ["noshape", "shape", "constrain",
+                    "scaling_func=", "cluster_flag=",
                     "job_name=", "sub_proc=", "arg_slice=", "load_results=",
                     "generate_structs=", "structs_pickle_dir=", "cap_rhos=",
                     "shape_intercept=", "shape_slope=", "restart"])
@@ -36,7 +68,6 @@ crystal_files = glob.glob(opts['-c'])
 output_dir = opts['-o']
 sample_n = int(opts['-n'])
 num_proc = int(opts['-p'])
-best_dist_func = opts["--best_dist_func"]
 scaling_func = opts["--scaling_func"]
 cluster_flag = opts["--cluster_flag"] == "True"
 job_name = opts["--job_name"]
@@ -76,6 +107,7 @@ for k, v in reactivities.iteritems():
     reactivities[k][1] = react_seq
     SU.rhos_list_to_file(reactivities[k][0], reactivities[k][2]+".rho")
 
+    # sample structures if needed
     sampling_opts_string = []
     if generate_structs:
         seqfile = NAU.make_seq(cryst_seq, output_dir+"temp.seq")
@@ -105,22 +137,20 @@ constrain_rho_F = {}
 
 # Reduce search space
 rho_midpoints = [0.1 * i for i in range(7, 61)]
+# TODO: for testing only
+rho_midpoints = [2.3]
 weights = [0.1 * i for i in range(11)]
 print "Parameter values to test: "
 print "rho_max and rho_c: " + str(rho_midpoints)
-print "weights: " + str(weights)
+print "weights: " + str(weights) + "\n"
 
 if '--constrain' not in opts:
     constrain_vals = ["no_constrained"]
-    out_sub_dir = out_stat_dir + "no_constrained/"
 elif len(opts['--constrain']) > 0:
     constrained_vals = [float(c) for c in opts['--constrain'].split(',')]
-    out_sub_dir = out_stat_dir + "constrained/"
     sampling_opts_string.append("--constrain %s" % (opts['--constrain']))
 else:
     constrain_vals = rho_midpoints
-    out_sub_dir = out_stat_dir + "rho_midpoint_constrained/"
-    OSU.create_directory(out_sub_dir)
     sampling_opts_string.append("--constrain")
 sampling_opts_string = " ".join(sampling_opts_string)
 
@@ -145,13 +175,13 @@ else:
     with open(structs_pickle_dir + "/save_reactivities.p", "rb") as f:
         reactivities = pickle.load(f)
 
+# handle rho_midpoints if cap_rhos is False
 if not cap_rhos:
     rho_midpoints = [-1.0]
 
-stationary_args = [reactivities, crystals, sample_n, react_rhos, structs_pickle_dir, output_dir, out_sub_dir, outname, best_dist_func, scaling_func, cap_rhos, shape_slope, shape_intercept]
+stationary_args = [reactivities, crystals, sample_n, react_rhos, structs_pickle_dir, output_dir, out_stat_dir, outname, scaling_func, cap_rhos, shape_slope, shape_intercept]
 if '--arg_slice' in opts:
     rm_cv_w = [(float(a) for a in opts["--arg_slice"][1:-1].split(","))]
-    print "rm_c_w arg_slice: " + str(rm_cv_w)
 else:
     rm_cv_w = zip(OSU.ncycles(rho_midpoints, len(constrain_vals)*len(weights)), cycle(OSU.repeat_elements(constrain_vals, len(rho_midpoints))), cycle(OSU.repeat_elements(weights, len(rho_midpoints)*len(constrain_vals))))
 
@@ -175,74 +205,64 @@ if num_proc == 1 and not cluster_flag and not load_results:
     # no parallelization on args level
     print "Hit num_proc == 1 and not cluster_flag and not load_results"
     for args in args_pool:
-        p_result = PAU.load_train_model_helper(args)[0]
-        c = p_result[1]
+        c, mr, w, F_score = PAU.load_train_model_helper(args)[0]
         if c == []:
             c = ""
-        k = CRW_pair(c=c, mr=p_result[0], w=p_result[2])
-        training_results[k] = (p_result[3], p_result[4])
+        k = CRW_pair(c=c, mr=mr, w=w)
+        training_results[k] = F_score
         if sub_proc:
             pickle.dump(training_results, open(training_res_dir + "save_training_results_%s_%s_%s.p" % (k.mr, k.c, k.w), "wb"))
 elif num_proc == 1 and cluster_flag and not load_results:  # This case is the first executed for the parallel version that utilizes the full cluster.
     # Surrounded job execution code to catch any subproc that doesn't finish to the pickling step.
     # Also acts as a limiter into the number of jobs that can be submitted to the queue at once.
     max_jobs = 511
-    jobs_available = 511
+    jobs_available = min(max_jobs, len(rm_cv_w))
     while len(rm_cv_w) > 0:
         sub_proc_dir = OSU.create_directory(output_dir + "sub_proc_out/")
-        for param in rm_cv_w:
+        for param in rm_cv_w:  # loop through all parameter sets
             param_string = "_".join([str(s) for s in param])
             job_name_param = "_".join([job_name, param_string])[:31]  # Job name can only be up to 31 characters long
+
+            # create .sh for parameter set if not exists
             if not OSU.check_file_exists("%snbs_script_%s.sh" % (sub_proc_sh_dir, param_string)):
                 header = "##NBS-stdout:%s\n##NBS-stderr:%s\n##NBS-queue:batch\n##NBS-name:\"%s\"\n##NBS-jcoll:\"%s\"\n\nrm %s %s\n" % (sub_proc_dir + job_name_param+".out", sub_proc_dir+job_name_param+".err", job_name_param, job_name, sub_proc_dir + job_name_param+".out", sub_proc_dir+job_name_param+".err")
-                OSU.system_command("echo \"%s/usr/bin/time /fs/home/amy35/tools/anaconda/bin/python find_parameters.py -r \'%s\' -c \'%s\' -o %s %s -n %s -p 1 --scaling_func %s --cluster_flag False --sub_proc True --arg_slice \'%s\' --job_name %s --load_results \'False\' --generate_structs \'False\' --cap_rhos %s --structs_pickle_dir %s\"> %snbs_script_%s.sh" % (header, opts['-r'], opts['-c'], opts['-o'], sampling_opts_string, opts['-n'], opts['--scaling_func'], param, job_name_param, cap_rhos, structs_pickle_dir, sub_proc_sh_dir, param_string))
+                OSU.system_command("echo \"%s/usr/bin/time /fs/home/amy35/tools/anaconda/bin/python ../find_parameters.py -r \'%s\' -c \'%s\' -o %s %s -n %s -p 1 --scaling_func %s --cluster_flag False --sub_proc True --arg_slice \'%s\' --job_name %s --load_results \'False\' --generate_structs \'False\' --cap_rhos %s --structs_pickle_dir %s\"> %snbs_script_%s.sh" % (header, opts['-r'], opts['-c'], opts['-o'], sampling_opts_string, opts['-n'], opts['--scaling_func'], param, job_name_param, cap_rhos, structs_pickle_dir, sub_proc_sh_dir, param_string))
+
+            # submit .sh to queue if not running, completed, or no job slots available
             if jobs_available > 0 and not PAU.check_job_on_queue(job_name_param) and not OSU.check_file_exists("".join([training_res_dir, "save_training_results_", param_string, ".p"])):
                 print "/opt/voyager/nbs/bin/jsub %snbs_script_%s.sh -name %s -stdout %snbs_script_%s.out -stderr %snbs_script_%s.err" % (sub_proc_sh_dir, param_string, job_name_param, sub_proc_dir, param_string, sub_proc_dir, param_string)
                 OSU.system_command("/opt/voyager/nbs/bin/jsub %snbs_script_%s.sh -name %s -stdout %snbs_script_%s.out -stderr %snbs_script_%s.err" % (sub_proc_sh_dir, param_string, job_name_param, sub_proc_dir, param_string, sub_proc_dir, param_string))
                 jobs_available -= 1
             else:
                 break
-        jobs_available = PAU.wait_jcoll_finish_any(job_name, sub_proc_dir, max_jobs, 60)
+
+        # wait for any job to complete and then update set of parameters left
+        jobs_available = PAU.wait_jcoll_finish_any(job_name, sub_proc_dir, min(max_jobs, len(rm_cv_w)), 60)
         rm_cv_w = [bm_param_set for bm_param_set in rm_cv_w if not OSU.check_file_exists("".join([training_res_dir, "save_training_results_", "_".join([str(b) for b in bm_param_set]), ".p"]))]
         OSU.system_command("echo \"len rm_cv_w: %s\n\" >> %sjcoll_waiting.txt" % (len(rm_cv_w), sub_proc_dir))
-        if remaining_params == len(rm_cv_w):
-            # send on first in rm_cv_w if there is no change in the number of parameters left
-            OSU.system_command("echo \"len rm_cv_w same as last time: %s\n\" >> %sjcoll_waiting.txt" % (rm_cv_w[0], sub_proc_dir))
-            param_string = "_".join([str(ele) for ele in rm_cv_w[0]])
-            job_name_param = "_".join([job_name, param_string])[:31]  # job name can only be 1-31 characters long
-            OSU.system_command('echo "/opt/voyager/nbs/bin/jsub %snbs_script_%s.sh -name %s -stdout %snbs_script_%s.out -stderr %snbs_script_%s.err" >> %sjcoll_waiting.txt' % (sub_proc_sh_dir, param_string, job_name_param, sub_proc_dir, param_string, sub_proc_dir, param_string, sub_proc_dir))
-            OSU.system_command("/opt/voyager/nbs/bin/jsub %snbs_script_%s.sh -name %s -stdout %snbs_script_%s.out -stderr %snbs_script_%s.err" % (sub_proc_sh_dir, param_string, job_name_param, sub_proc_dir, param_string, sub_proc_dir, param_string))
-            OSU.system_command("echo \"waiting for this output file: %s\n%s\n\" >> %sjcoll_waiting.txt" % (rm_cv_w[0], "".join([training_res_dir, "save_training_results_", "_".join([str(b) for b in rm_cv_w[0]]), ".p"]), sub_proc_dir))
-            PAU.wait_for_jcoll(job_name, sub_proc_dir, 30)
-            OSU.system_command("echo \"len rm_cv_w same as last time: %s\n\" >> %sjcoll_waiting.txt" % ("".join([training_res_dir, "save_training_results_", "_".join([str(b) for b in rm_cv_w[0]]), ".p"]), sub_proc_dir))
-            if OSU.check_file_exists("".join([training_res_dir, "save_training_results_", "_".join([str(b) for b in rm_cv_w[0]]), ".p"])):
-                rm_cv_w.pop(0)
-                OSU.system_command("echo \"len rm_cv_w after running one: %s\n\" >> %sjcoll_waiting.txt" % (len(rm_cv_w), sub_proc_dir))
-            else:
-                OSU.system_exit("Did not find %s" % ("".join([training_res_dir, "save_training_results_", "_".join([str(b) for b in rm_cv_w[0]]), ".p"])))
 
         remaining_params = len(rm_cv_w)
         print "remaining_params: " + str(remaining_params)
+else:
+    raise Exception("Cluster case not implemented")
 
+# Handles output if loaded previously calculated results and is not a subjob
+if (num_proc == 1 and cluster_flag and not load_results) or (load_results and not sub_proc and num_proc != 1):
     training_res_pickles = OSU.load_all_pickles(training_res_dir)
     for pickle_value in training_res_pickles.values():
         training_results.update(pickle_value)
-    max_F = max([f for dr, f in training_results.values()])
-    max_F_keys = [k for k in sorted(training_results) if training_results[k][1] == max_F]
-    with open(output_dir + "/best_params.txt", "w") as f:
-        f.write(str(max_F) + " : Sum of F-scores\n")
-        f.write(str(max_F_keys) + " : Constraint values of best sum F-Scores\n")
-else:
-    raise Exception("Cluster case not implemented yet")
 
-if load_results and not sub_proc:
-    if num_proc != 1:
-        training_res_pickles = OSU.load_all_pickles(training_res_dir)
-        for pickle_value in training_res_pickles.values():
-            training_results.update(pickle_value)
-    print "training_results.values(): " + str(training_results.values())
-    max_F = max([f for dr, f in training_results.values()])
-    max_F_keys = [k for k in sorted(training_results) if training_results[k][1] == max_F]
+    # output best parameter set results
+    max_F = max(training_results.values())
+    max_F_keys = [k for k in sorted(training_results) if training_results[k] == max_F]
     with open(output_dir + "/best_params.txt", "w") as f:
         f.write(str(max_F) + " : Sum of F-scores\n")
         f.write(str(max_F_keys) + " : Constraint values of best sum F-Scores\n")
+    for k in max_F_keys:
+        param_string = "_".join([str(s) for s in k])
+        OSU.system_command("echo '\n%s' >> %s" % (param_string, output_dir + "/best_params.txt"))
+        OSU.system_command("cat %s/%s/diffs_best_F.txt >> %s" % (out_stat_dir, param_string, output_dir + "/best_params.txt"))
+
+    # print results to stdout
+    with open(output_dir + "/best_params.txt", "r") as f:
+        print "\n\n" + f.read()

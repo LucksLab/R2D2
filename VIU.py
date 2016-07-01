@@ -48,7 +48,6 @@ def generate_movie(regex, outfile):
         OSU.system_command("/usr/bin/ffmpeg -framerate 1 -i " + regex + " -c:v libx264 -r 10 -s 1200x2800 -pix_fmt yuv420p " + outfile)
 
 
-#TODO: keep? Yes if we are using
 def generate_MFE_CoTrans_movie(seq, seq_start, seq_end, outdir, thetasdir=""):
     """
     Generate co-transcriptional MFE folding movie.

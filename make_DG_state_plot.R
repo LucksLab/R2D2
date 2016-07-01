@@ -1,6 +1,5 @@
 require(data.table)
 
-# TODO: add multiple pathway plotting
 # Make a DG state plot from the DG state .dump file
 #
 # Usage: R < make_DG_state_plot.R --no-save <outfile> <comma-separated list of DG dump files> <smallest length to plot> <largest length to plot>
