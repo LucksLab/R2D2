@@ -23,7 +23,7 @@ def parse_input_panels(infiles, output_dir):
     # infiles should be a directory with EITHER crystal structure ct files OR reactivities ct files
     parsed = {}
     for f in infiles:
-        fname = re.findall("([^/]+_(\w+)_reactivities).txt$|([^/]+_(\w+)).ct$", f)  # Make sure to follow this regex
+        fname = re.findall('([^/]+_([\\w]+[-]?[\\w]*)_reactivities).txt$|([^/]+_(\\w+)).ct$', f)  # Make sure to follow this regex
         if fname[0][1] != '':  # reactivities file
             output_file_prefix = output_dir + "/" + fname[0][0]
             pos, rho_orig, theta, rho_cut, seq, rc_flag, rc_sum, ut_sum, t_sum = SU.parse_reactivity_rho(f, "", output_file_prefix)
@@ -50,19 +50,20 @@ def train_constraint_model(crystal_dict, constrained_folds, cfr, react_rhos, rho
     F_score = 0
     all_stats = defaultdict(list)
     min_dist_ind_dict = defaultdict(list)
-    for k in sorted(crystal_dict.keys()):
+    for k in sorted(react_rhos.keys()):
+        ck = k.split('-')[0]  # corresponding crystal key from the reactivity key
         # cap rho reactivities to a max value
         if cap_rhos:
             scaled_rhos = scaling_fns[scaling_func](react_rhos[k], rho_value)
         else:
             scaled_rhos = scaling_fns[scaling_func](react_rhos[k])
         distances = []
-        cf_dict_structs = [s.split(',') if isinstance(s, str) else s for s, l in constrained_folds[k]]
+        cf_structs = [s.split(',') if isinstance(s, str) else s for s, l in constrained_folds[k]]
 
         # calculate distances between sampled structures and rho reactivities
-        binary_structs = SU.ct_struct_to_binary_vec(cf_dict_structs)
+        binary_structs = SU.ct_struct_to_binary_vec(cf_structs)
         for s in binary_structs:
-            distances.append(SU.calc_bp_distance_vector_weighted(s, scaled_rhos, scaling_func=scaling_func, invert_struct="U" in scaling_func, paired_weight=weight))
+            distances.append(SU.calc_bp_distance_vector_weighted(s, scaled_rhos, scaling_func=scaling_func, invert_struct="D" != scaling_func, paired_weight=weight))
         min_distance = min(distances)
         min_dist_ind_dict[k] = [i for i, v in enumerate(distances) if v == min_distance]
         del binary_structs
@@ -70,12 +71,11 @@ def train_constraint_model(crystal_dict, constrained_folds, cfr, react_rhos, rho
         # calculate and output results for this parameter set
         crystal_diffs = []
         F_score_list = []
-        binary_struct_mats = SU.ct_struct_to_binary_mat(cf_dict_structs)
         for i in min_dist_ind_dict[k]:
             print "\nStruct key %s min distance index %s" % (k, i)
-            binary_struct_mat = binary_struct_mats[i]
-            bm_stats = SU.calc_benchmark_statistics_matrix(binary_struct_mat, crystal_dict[k][2])
-            crystal_diffs.append(SU.calc_bp_distance_matrix(binary_struct_mat, crystal_dict[k][2]))
+            binary_struct_mat = SU.ct_struct_to_binary_mat(cf_structs[i])
+            bm_stats = SU.calc_benchmark_statistics_matrix(binary_struct_mat, crystal_dict[ck][2])
+            crystal_diffs.append(SU.calc_bp_distance_matrix(binary_struct_mat, crystal_dict[ck][2]))
             all_stats[k].append(bm_stats)
             F_score_list.append(bm_stats["F_score"])
         avg_F_score = sum(F_score_list) / float(len(F_score_list))
@@ -131,19 +131,20 @@ def output_train_model_stats(all_diffs_stats, min_dist_struct_indices, F_score, 
         pickle.dump(min_dist_struct_indices, f)
 
     # Generate circle compare diagrams of minimum distance structures
-    for k in sorted(crystals.keys()):
+    for k in sorted(reactivities_structs.keys()):
+        ck = k.split('-')[0]  # corresponding crystal key from the reactivity key
         for mdi in min_dist_struct_indices[k]:
             outpre = output_dir+"/"+k+str(mdi)
-            SU.ct_list_to_file(reactivities_structs[k][mdi][0], crystals[k][1], outpre+".ct")
-            SU.runRNAstructure_CircleCompare(outpre+".ct", crystals[k][3], outpre+".ps")
+            SU.ct_list_to_file(reactivities_structs[k][mdi][0], crystals[ck][1], outpre+".ct")
+            SU.runRNAstructure_CircleCompare(outpre+".ct", crystals[ck][3], outpre+".ps")
             OSU.system_command("convert %s.ps %s.jpg" % (outpre, outpre))
 
     # Write out information on highest F score structures
     with open(output_dir + "/diffs_best_F.txt", 'w') as f:
         f.write("Max avg F score: " + str(F_score) + "\n")
-        for ck in sorted(crystals.keys()):
-            reactivities_labels = [reactivities_structs[ck][x][1] for x in min_dist_struct_indices[ck]]
-            f.write("Methods: " + str(ck) + "\t" + str(reactivities_labels) + "\n")
+        for k in sorted(reactivities_structs.keys()):
+            reactivities_labels = [reactivities_structs[k][x][1] for x in min_dist_struct_indices[k]]
+            f.write("Methods: " + str(k) + "\t" + str(reactivities_labels) + "\n")
         for k, stat_i in all_diffs_stats.items():
             f.write("Structure key: %s\n" % (k))
             f.write(str(stat_i) + "\n")

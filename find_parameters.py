@@ -137,8 +137,6 @@ constrain_rho_F = {}
 
 # Reduce search space
 rho_midpoints = [0.1 * i for i in range(7, 61)]
-# TODO: for testing only
-rho_midpoints = [2.3]
 weights = [0.1 * i for i in range(11)]
 print "Parameter values to test: "
 print "rho_max and rho_c: " + str(rho_midpoints)

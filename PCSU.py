@@ -132,7 +132,7 @@ def run_cotrans_length(file_l, output_dir, ct_dir, pickle_dir, adapterseq, endcu
     binary_structs = SU.ct_struct_to_binary_vec(file_data_length_key["structs"])
     distances = []
     for s in binary_structs:
-        distances.append(SU.calc_bp_distance_vector_weighted(s, scaled_rhos, scaling_func=scaling_func, invert_struct="U" in scaling_func, paired_weight=weight_paired))
+        distances.append(SU.calc_bp_distance_vector_weighted(s, scaled_rhos, scaling_func=scaling_func, invert_struct="D" != scaling_func, paired_weight=weight_paired))
     file_data_length_key["distances"] = distances
     min_distance = min(distances)
     file_data_length_key["min_dist_indices"] = [i for i, v in enumerate(distances) if v == min_distance]
