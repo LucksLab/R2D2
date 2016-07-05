@@ -182,6 +182,8 @@ if '--arg_slice' in opts:
     rm_cv_w = [(float(a) for a in opts["--arg_slice"][1:-1].split(","))]
 else:
     rm_cv_w = zip(OSU.ncycles(rho_midpoints, len(constrain_vals)*len(weights)), cycle(OSU.repeat_elements(constrain_vals, len(rho_midpoints))), cycle(OSU.repeat_elements(weights, len(rho_midpoints)*len(constrain_vals))))
+    # account for potential floating point precision errors, also assumes at most 1 decimal place
+    rm_cv_w = [(round(rm, 1), round(cv, 1), round(w, 1)) for rm, cv, w in rm_cv_w]
 
 training_results = {}
 training_res_dir = OSU.create_directory(output_dir + "/training_results/")
@@ -210,6 +212,7 @@ if num_proc == 1 and not cluster_flag and not load_results:
         training_results[k] = F_score
         if sub_proc:
             pickle.dump(training_results, open(training_res_dir + "save_training_results_%s_%s_%s.p" % (k.mr, k.c, k.w), "wb"))
+            print "Finished: %ssave_training_results_%s_%s_%s.p" % (training_res_dir, k.mr, k.c, k.w)
 elif num_proc == 1 and cluster_flag and not load_results:  # This case is the first executed for the parallel version that utilizes the full cluster.
     # Surrounded job execution code to catch any subproc that doesn't finish to the pickling step.
     # Also acts as a limiter into the number of jobs that can be submitted to the queue at once.
@@ -231,7 +234,7 @@ elif num_proc == 1 and cluster_flag and not load_results:  # This case is the fi
                 print "/opt/voyager/nbs/bin/jsub %snbs_script_%s.sh -name %s -stdout %snbs_script_%s.out -stderr %snbs_script_%s.err" % (sub_proc_sh_dir, param_string, job_name_param, sub_proc_dir, param_string, sub_proc_dir, param_string)
                 OSU.system_command("/opt/voyager/nbs/bin/jsub %snbs_script_%s.sh -name %s -stdout %snbs_script_%s.out -stderr %snbs_script_%s.err" % (sub_proc_sh_dir, param_string, job_name_param, sub_proc_dir, param_string, sub_proc_dir, param_string))
                 jobs_available -= 1
-            else:
+            elif jobs_available == 0:
                 break
 
         # wait for any job to complete and then update set of parameters left
@@ -242,7 +245,7 @@ elif num_proc == 1 and cluster_flag and not load_results:  # This case is the fi
         remaining_params = len(rm_cv_w)
         print "remaining_params: " + str(remaining_params)
 else:
-    raise Exception("Cluster case not implemented")
+    raise Exception("Case not implemented")
 
 # Handles output if loaded previously calculated results and is not a subjob
 if (num_proc == 1 and cluster_flag and not load_results) or (load_results and not sub_proc and num_proc != 1):
