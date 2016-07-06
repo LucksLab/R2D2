@@ -205,19 +205,19 @@ if num_proc == 1 and not cluster_flag and not load_results:
     # no parallelization on args level
     print "Hit num_proc == 1 and not cluster_flag and not load_results"
     for args in args_pool:
-        c, mr, w, F_score = PAU.load_train_model_helper(args)[0]
+        mr, c, w, F_score = PAU.load_train_model_helper(args)[0]
         if c == []:
             c = ""
         k = CRW_pair(c=c, mr=mr, w=w)
         training_results[k] = F_score
         if sub_proc:
             pickle.dump(training_results, open(training_res_dir + "save_training_results_%s_%s_%s.p" % (k.mr, k.c, k.w), "wb"))
-            print "Finished: %ssave_training_results_%s_%s_%s.p" % (training_res_dir, k.mr, k.c, k.w)
 elif num_proc == 1 and cluster_flag and not load_results:  # This case is the first executed for the parallel version that utilizes the full cluster.
     # Surrounded job execution code to catch any subproc that doesn't finish to the pickling step.
     # Also acts as a limiter into the number of jobs that can be submitted to the queue at once.
     max_jobs = 511
     jobs_available = min(max_jobs, len(rm_cv_w))
+    params_submitted = []
     while len(rm_cv_w) > 0:
         sub_proc_dir = OSU.create_directory(output_dir + "sub_proc_out/")
         for param in rm_cv_w:  # loop through all parameter sets
@@ -233,17 +233,24 @@ elif num_proc == 1 and cluster_flag and not load_results:  # This case is the fi
             if jobs_available > 0 and not PAU.check_job_on_queue(job_name_param) and not OSU.check_file_exists("".join([training_res_dir, "save_training_results_", param_string, ".p"])):
                 print "/opt/voyager/nbs/bin/jsub %snbs_script_%s.sh -name %s -stdout %snbs_script_%s.out -stderr %snbs_script_%s.err" % (sub_proc_sh_dir, param_string, job_name_param, sub_proc_dir, param_string, sub_proc_dir, param_string)
                 OSU.system_command("/opt/voyager/nbs/bin/jsub %snbs_script_%s.sh -name %s -stdout %snbs_script_%s.out -stderr %snbs_script_%s.err" % (sub_proc_sh_dir, param_string, job_name_param, sub_proc_dir, param_string, sub_proc_dir, param_string))
+                params_submitted.append(param)
                 jobs_available -= 1
             elif jobs_available == 0:
                 break
 
         # wait for any job to complete and then update set of parameters left
         jobs_available = PAU.wait_jcoll_finish_any(job_name, sub_proc_dir, min(max_jobs, len(rm_cv_w)), 60)
-        rm_cv_w = [bm_param_set for bm_param_set in rm_cv_w if not OSU.check_file_exists("".join([training_res_dir, "save_training_results_", "_".join([str(b) for b in bm_param_set]), ".p"]))]
+        for ps in params_submitted:
+            if OSU.check_file_exists("".join([training_res_dir, "save_training_results_", "_".join([str(b) for b in ps]), ".p"])):
+                params_submitted.remove(ps)
+                rm_cv_w.remove(ps)
         OSU.system_command("echo \"len rm_cv_w: %s\n\" >> %sjcoll_waiting.txt" % (len(rm_cv_w), sub_proc_dir))
+        OSU.system_command("echo \"len params_submitted: %s\n\" >> %sjcoll_waiting.txt" % (len(params_submitted), sub_proc_dir))
 
         remaining_params = len(rm_cv_w)
         print "remaining_params: " + str(remaining_params)
+
+        OSU.system_exit()
 else:
     raise Exception("Case not implemented")
 
