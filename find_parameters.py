@@ -241,7 +241,7 @@ elif num_proc == 1 and cluster_flag and not load_results:  # This case is the fi
         # wait for any job to complete and then update set of parameters left
         jobs_available = PAU.wait_jcoll_finish_any(job_name, sub_proc_dir, min(max_jobs, len(rm_cv_w)), 60)
         for ps in params_submitted:
-            if OSU.check_file_exists("".join([training_res_dir, "save_training_results_", "_".join([str(b) for b in ps]), ".p"])):
+            if ps in rm_cv_w and OSU.check_file_exists("".join([training_res_dir, "save_training_results_", "_".join([str(b) for b in ps]), ".p"])):
                 params_submitted.remove(ps)
                 rm_cv_w.remove(ps)
         OSU.system_command("echo \"len rm_cv_w: %s\n\" >> %sjcoll_waiting.txt" % (len(rm_cv_w), sub_proc_dir))
