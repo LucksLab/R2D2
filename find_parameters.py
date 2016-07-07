@@ -250,7 +250,6 @@ elif num_proc == 1 and cluster_flag and not load_results:  # This case is the fi
         remaining_params = len(rm_cv_w)
         print "remaining_params: " + str(remaining_params)
 
-        OSU.system_exit()
 else:
     raise Exception("Case not implemented")
 
