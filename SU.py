@@ -20,6 +20,23 @@ import collections
 from itertools import repeat
 
 
+def runRNAstructure_fold(seqfile, ctfilename, shapefile="", m=1, shape_slope=1.1, shape_intercept=-0.3, p=-99, parallel=False):
+    """
+    Run RNAstructure executable Fold.
+    """
+    if parallel:
+        Fold_cmd = 'Fold-smp '
+    else:
+        Fold_cmd = "Fold "
+    Fold_cmd += '%s %s -m %d' % (seqfile, ctfilename, m)
+    if shapefile != "":
+        Fold_cmd += ' -sh %s' % (shapefile)
+    if p != -99:
+        Fold_cmd += ' -p %d' % (p)
+    Fold_cmd += ' -si %s -sm %s > /dev/null' % (shape_intercept, shape_slope)
+    os.system(Fold_cmd)
+
+
 def runRNAstructure_stochastic(pfsfile, ctfilename, e=1000, seed=-1, parallel=False):
     """
     Run RNAstructure executable stochastic.
