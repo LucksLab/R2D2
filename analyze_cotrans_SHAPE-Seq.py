@@ -10,7 +10,7 @@ import R2D2
 import LucksLabUtils_config
 import OSU
 
-LucksLabUtils_config.config("ICSE")
+LucksLabUtils_config.config("Quest_R2D2")
 OSU.system_command("echo $PATH")
 OSU.system_command("echo $CLASSPATH")
 

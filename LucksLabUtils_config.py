@@ -29,3 +29,15 @@ def config(user):
         OSU.setenv("CLASSPATH", "/fs/europa/g_jbl/Software/Executables/VARNAv3-9.jar")
         OSU.setenv("LD_LIBRARY_PATH", "/fs/europa/g_jbl/Software/SHAPE-Seq/bin/lib:$LD_LIBRARY_PATH")
         OSU.setenv("BOOST_ROOT", "/fs/europa/g_jbl/Software/SHAPE-Seq/build/boost_1_49_0")
+    elif user == "Quest":
+        OSU.setenv("DATAPATH", "/projects/b1044/Software/src/RNAstructure/data_tables")
+        OSU.setenv("CLASSPATH", "/projects/b1044/Software/bin/VARNAv3-9.jar")
+        OSU.setenv("LD_LIBRARY_PATH", "/projects/b1044/Software/bin/SHAPE-Seq/bin/lib:$LD_LIBRARY_PATH")
+        OSU.setenv("BOOST_ROOT", "/projects/b1044/Software/bin/SHAPE-Seq/build/boost_1_49_0")
+    elif user == "Quest_R2D2":
+        OSU.setenv("PATH", "/projects/b1044/Software/bin/GitHub/R2D2")
+        OSU.setenv("DATAPATH", "/projects/b1044/Software/src/RNAstructure/data_tables")
+        OSU.setenv("CLASSPATH", "/projects/b1044/Software/bin/VARNAv3-9.jar")
+        OSU.setenv("LD_LIBRARY_PATH", "/projects/b1044/Software/bin/SHAPE-Seq/bin/lib:$LD_LIBRARY_PATH")
+        OSU.setenv("BOOST_ROOT", "/projects/b1044/Software/bin/SHAPE-Seq/build/boost_1_49_0")
+

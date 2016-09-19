@@ -41,11 +41,11 @@ def generate_movie(regex, outfile):
     Generate a movie with images as described by regex.
     """
     try:
-        print "/usr/bin/ffmpeg -r 1 -i " + regex + " -vcodec mpeg4 -b 800k -r 10 -s 1200x2800 -pix_fmt yuv420p " + outfile
-        OSU.system_command("/usr/bin/ffmpeg -r 1 -i " + regex + " -vcodec mpeg4 -b 800k -r 10 -s 1200x2800 -pix_fmt yuv420p " + outfile)
+        print "ffmpeg -r 1 -i " + regex + " -vcodec mpeg4 -b 800k -r 10 -s 1200x2800 -pix_fmt yuv420p " + outfile
+        OSU.system_command("ffmpeg -r 1 -i " + regex + " -vcodec mpeg4 -b 800k -r 10 -s 1200x2800 -pix_fmt yuv420p " + outfile)
     except:
-        print "/usr/bin/ffmpeg -framerate 1 -i " + regex + " -c:v libx264 -r 10 -s 1200x2800 -pix_fmt yuv420p " + outfile
-        OSU.system_command("/usr/bin/ffmpeg -framerate 1 -i " + regex + " -c:v libx264 -r 10 -s 1200x2800 -pix_fmt yuv420p " + outfile)
+        print "ffmpeg -framerate 1 -i " + regex + " -c:v libx264 -r 10 -s 1200x2800 -pix_fmt yuv420p " + outfile
+        OSU.system_command("ffmpeg -framerate 1 -i " + regex + " -c:v libx264 -r 10 -s 1200x2800 -pix_fmt yuv420p " + outfile)
 
 
 def generate_MFE_CoTrans_movie(seq, seq_start, seq_end, outdir, thetasdir=""):
@@ -93,7 +93,7 @@ def run_VARNA(dbnfile, outfile, SHAPE_vals):
     and SHAPE reactivities.
     """
     mapcolors = '"0:#FFFFFF;0.75:#FFCC33;1.3:#FF9933;2.0:#FF6633;5.0:#FF0000"'
-    command = 'java -Xmx2G fr.orsay.lri.varna.applications.VARNAcmd -i %s -o %s -resolution "3.0" -title "" -titleSize 10  -colorMap %s -colorMapStyle %s  -colorMapMin "0.0" -colorMapMax "5.0"' % (dbnfile, outfile, SHAPE_vals, mapcolors)
-    command += ' > /dev/null 2>&1'
+    command = 'java fr.orsay.lri.varna.applications.VARNAcmd -i %s -o %s -resolution "3.0" -title "" -titleSize 10  -colorMap %s -colorMapStyle %s  -colorMapMin "0.0" -colorMapMax "5.0"' % (dbnfile, outfile, SHAPE_vals, mapcolors)
+    #command += ' > /dev/null 2>&1'
     print command
     os.system(command)
