@@ -24,7 +24,7 @@ def convert_center_resize(image, res):
     """
     Centers image and resizes.
     """
-    OSU.system_command("convert %s -background none -gravity Center -extent %s %s.temp" % (image, res, image))
+    OSU.system_command("convert %s -background none -gravity Center -resize %s %s.temp" % (image, res, image))
     os.rename(image + ".temp", image)
 
 
