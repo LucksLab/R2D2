@@ -165,6 +165,10 @@ class R2D2:
         else:
             PCSU.run_output_multiprocessing_pool(PCSU.calculate_function_helper, args_pool, self.p)
 
+        if not OSU.check_file_exists(self.output_dir+"/DG_state_plot.pdf"):  # Weird error on quest that it will ignore this command if sample size is very large
+            PCSU.generate_DG_output(self, 1, sorted_lengths[-1])
+
+
         # Use ffmpeg on varna_num.png's to create video of the minimum distance folding pathway
         OSU.make_symbolic_link(draw_dir + str(len(draw_struct_nums)).zfill(zero_padding) + "_structure.png", draw_dir + str(len(draw_struct_nums)+1).zfill(zero_padding) + "_structure.png")  # ffmpeg needs a duplicate of the last frame
         VIU.generate_movie(draw_dir + "%%%dd_structure.png" % (zero_padding), self.output_dir + "/movie.mp4")
