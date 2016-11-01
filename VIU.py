@@ -48,7 +48,7 @@ def generate_movie(regex, outfile):
         OSU.system_command("ffmpeg -framerate 1 -i " + regex + " -c:v libx264 -r 10 -s 1200x2800 -pix_fmt yuv420p " + outfile)
 
 
-def generate_MFE_CoTrans_movie(seq, seq_start, seq_end, outdir, thetasdir=""):
+def generate_MFE_CoTrans_movie(seq, outdir, seq_start=-1, seq_end=-1, thetasdir=""):
     """
     Generate co-transcriptional MFE folding movie.
     """
@@ -67,7 +67,8 @@ def generate_MFE_CoTrans_movie(seq, seq_start, seq_end, outdir, thetasdir=""):
         OSU.remove_file("temp.rho")
     with open("VIU.test.txt", 'w') as vtf:
         vtf.write(str(rhos))
-    for seqi in range(seq_start+1, seq_end+1):
+    seqi_list = range(1,len(seq)+1) if seq_start == -1 and seq_end == -1 else range(seq_start+1, seq_end+1)
+    for seqi in seqi_list:
         varna_num += 1
         if seqi in rhos:
             rho_varna = "\"" + ";".join(rhos[seqi]+(["-1"]*(seq_end-seqi))) + "\""
