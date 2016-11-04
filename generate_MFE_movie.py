@@ -22,13 +22,13 @@ import OSU
 LucksLabUtils_config.config("Quest_R2D2")  # set up environment
 
 # parse command line arguments
-opts = OSU.getopts("", ["seq=", "seq_start=", "seq_end=", "outdir=", "thetasdir="])
+opts = OSU.getopts("", ["seq=", "seq_start=", "seq_end=", "outdir=", "rhos_dir="])
 print opts
 seq = opts["--seq"]
+outdir = opts["--outdir"]
 seq_start = opts["--seq_start"] if "--seq_start" in opts else -1
 seq_end = opts["--seq_end"] if "--seq_end" in opts else -1
-outdir = opts["--outdir"]
-thetasdir = opts["--thetasdir"] if "--thetasdir" in opts else ""
-
+rhos_dir = opts["--rhos_dir"] if "--rhos_dir" in opts else ""
+print outdir
 # generate MFE movie
-VIU.generate_MFE_CoTrans_movie(seq, seq_start, seq_end, outdir, thetasdir)
+VIU.generate_MFE_CoTrans_movie(seq, outdir, seq_start, seq_end, rhos_dir)
