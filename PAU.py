@@ -17,8 +17,9 @@ import time
 
 def parse_input_panels(infiles, output_dir):
     """
-    Parses input crystal ct files and experimental reactivities. This sets up the dictionary datastructure.
+    Parses input crystal ct files and experimental reactivities (infiles). This sets up the dictionary datastructure.
     It assumes distinct naming conventions to determine if the input is crystal structures or SHAPE-Seq data.
+    Also requires output_dir
     """
     # infiles should be a directory with EITHER crystal structure ct files OR reactivities ct files
     parsed = {}
@@ -50,6 +51,7 @@ def train_constraint_model(crystal_dict, constrained_folds, cfr, react_rhos, rho
     F_score = 0
     all_stats = defaultdict(list)
     min_dist_ind_dict = defaultdict(list)
+    # Obsolete now that we are calling this function for every parameter set
     for k in sorted(react_rhos.keys()):
         ck = k.split('-')[0]  # corresponding crystal key from the reactivity key
         # cap rho reactivities to a max value
@@ -90,6 +92,7 @@ def load_train_model(rho_midpoint, constrain_val, paired_weight, reactivities, c
     Runs the analysis of a (rho_midpoint, constrain_val, paired_weight) triple by loading in the sampled structures from sampling with hard constraints and constrain_val.
     """
     constrained_folds = {}
+    # Obselete since we use 1 reactivity at a time
     for k in reactivities:
         if isinstance(reactivities[k][3], list):
             constrained_folds[k] = reactivities[k][3]
@@ -101,6 +104,7 @@ def load_train_model(rho_midpoint, constrain_val, paired_weight, reactivities, c
     if constrain_val != "no_constrained":
         # load sampled folds with hard constrain c
         constrained_structs_dict = pickle.load(open("%sconstrained_folds_%s.p" % (structs_pickle_dir, str(constrain_val)), "rb"))
+        # Obselete since we use 1 reactivity at a time
         for k in reactivities:
             constrained_structs = set(constrained_structs_dict[k])
             constrained_structs.update(set(constrained_folds[k]))

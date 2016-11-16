@@ -5,6 +5,10 @@ Uses cotranscriptional SHAPE-Seq reactivities to determine the cotranscriptional
 
 Version: 0.0.0
 Author: Angela M Yu, 2014-2016
+
+Copyright (C) 2016  Julius B. Lucks, Angela M Yu.
+All rights reserved.
+Distributed under the terms of the GNU General Public License, see 'LICENSE'.
 """
 
 import PCSU

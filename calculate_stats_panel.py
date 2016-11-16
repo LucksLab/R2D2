@@ -6,10 +6,9 @@ import LucksLabUtils_config
 import glob
 
 # setup environment variables specific to the ICSE cluster at Cornell
-LucksLabUtils_config.config("ICSE")
+LucksLabUtils_config.config("Quest_R2D2")
 opts = OSU.getopts("o:c:r:p:", ["shape_intercept=", "shape_slope="])
-
-# /fs/home/amy35/Projects/Cotrans/data/panels/Reactivities/links_rm357/5S_140_1_reactivities.txt
+print opts
 
 reactivities_files = glob.glob(opts['-r'])
 crystal_files = glob.glob(opts['-c'])
@@ -24,6 +23,9 @@ crystals = PAU.parse_input_panels(crystal_files, output_dir)
 
 if set(crystals.keys()) != set([rk.split('-')[0] for rk in reactivities.keys()]):
     raise Exception("Keys of crystal structures and reactivities not equal")
+
+print crystals.keys()
+print reactivities.keys()
 
 for k, v in reactivities.iteritems():
     react_rhos = v[0]
@@ -40,8 +42,8 @@ for k, v in reactivities.iteritems():
     SU.rhos_list_to_file(react_rhos, reactivities[k][2]+".rho")
     seqfile = NAU.make_seq(reactivities[k][1], reactivities[k][2]+".seq")
     SU.runRNAstructure_fold(seqfile, reactivities[k][2]+".ct", shapefile=reactivities[k][2]+".rho", p=num_proc, shape_intercept=shape_intercept, shape_slope=shape_slope)
-    SU.runRNAstructure_CircleCompare(reactivities[k][2]+".ct", crystals[k][3], reactivities[k][2]+".ps")
+    SU.runRNAstructure_CircleCompare(reactivities[k][2]+".ct", crystals[ck][3], reactivities[k][2]+".ps")
     OSU.system_command("convert %s.ps %s.jpg" % (reactivities[k][2], reactivities[k][2]))
     with open(reactivities[k][2]+".stats", "w") as f:
         react_mat = SU.ct_struct_to_binary_mat(SU.get_ct_structs(reactivities[k][2]+".ct"))[0]
-        f.write(str(SU.calc_benchmark_statistics_matrix(react_mat, crystals[k][2])))
+        f.write(str(SU.calc_benchmark_statistics_matrix(react_mat, crystals[ck][2])))

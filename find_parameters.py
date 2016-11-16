@@ -3,7 +3,7 @@ find_parameters.py
 
 Benchmarking code for R2D2 (Reconstructing RNA Dynamics from Data) using grid
 search on different parameter sets.
-Developed specifically for the ICSE cluster.
+Developed specifically for the ICSE cluster at Cornell University.
 
 Version: 0.0.1
 Author: Angela M Yu, 2014-2016
