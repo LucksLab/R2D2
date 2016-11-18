@@ -3,7 +3,11 @@ analyze_cotrans_SHAPE-Seq.py calls R2D2
 See examples/run_CoTrans_example.sh for an example of how to use this code.
 
 Author: Angela M Yu, 2014-2016
-Version: 0.0.0
+Version: 0.0.1
+
+Copyright (C) 2016  Julius B. Lucks and Angela M Yu.
+All rights reserved.
+Distributed under the terms of the GNU General Public License, see 'LICENSE'.
 """
 
 import R2D2

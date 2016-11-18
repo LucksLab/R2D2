@@ -1,8 +1,12 @@
 """
 Panel Analysis Utilities (PAU)
 
-Version: 0.0.0
+Version: 0.0.1
 Author: Angela M Yu
+
+Copyright (C) 2016  Julius B. Lucks, Angela M Yu.
+All rights reserved.
+Distributed under the terms of the GNU General Public License, see 'LICENSE'.
 """
 
 import re

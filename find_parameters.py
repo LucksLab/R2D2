@@ -40,6 +40,10 @@ OPTIONS:
 --constrain          = Sampled structures from a hard-constrained partition function where bases are forced single stranded if SHAPE value greater than a threshold
 --arg_slice          = Specific parameters to test. ex. '(2.3, 2.3, 0.5)'
 --restart            = Option to load previously started benchmarking. Use if parent process is somehow aborted.
+
+Copyright (C) 2016  Julius B. Lucks, Angela M Yu.
+All rights reserved.
+Distributed under the terms of the GNU General Public License, see 'LICENSE'.
 """
 
 import glob

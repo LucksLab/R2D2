@@ -5,8 +5,11 @@ require(data.table)
 # Usage: R < make_DG_state_plot.R --no-save <outfile> <comma-separated list of DG dump files> <smallest length to plot> <largest length to plot>
 #
 # Author: Angela M Yu, 2014-2016
-# Version: 0.0.0
-
+# Version: 0.0.1
+#
+# Copyright (C) 2016  Julius B. Lucks, Angela M Yu.
+# All rights reserved.
+# Distributed under the terms of the GNU General Public License, see 'LICENSE'.
 
 # Parse arguments
 args <- commandArgs(trailingOnly = TRUE)

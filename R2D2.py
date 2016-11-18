@@ -3,7 +3,7 @@ R2D2 (Reconstructing RNA Dynamics with Data)
 
 Uses cotranscriptional SHAPE-Seq reactivities to determine the cotranscriptional folding pathway of an RNA.
 
-Version: 0.0.0
+Version: 0.0.1
 Author: Angela M Yu, 2014-2016
 
 Copyright (C) 2016  Julius B. Lucks, Angela M Yu.

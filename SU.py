@@ -1,8 +1,12 @@
 """
 Structure-related utilities (SU.py).
 
-Version: 0.0.0
+Version: 0.0.1
 Author: Angela M Yu, 2014-2016
+
+Copyright (C) 2016  Julius B. Lucks, Angela M Yu.
+All rights reserved.
+Distributed under the terms of the GNU General Public License, see 'LICENSE'.
 """
 
 from __future__ import division  # allows division of ints to output decimals

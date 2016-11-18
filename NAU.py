@@ -2,7 +2,11 @@
 NAU (Nucleic Acid Utility) contains a variety of functions useful for manipulating RNA/DNA sequences and files
 
 Author: This module was created by Kyle Watters in September, 2014, extended by Angela Yu 2014-2016.
-Version: 0.0.0
+Version: 0.0.1
+
+Copyright (C) 2016  Julius B. Lucks, Angela M Yu, and Kyle E. Watters.
+All rights reserved.
+Distributed under the terms of the GNU General Public License, see 'LICENSE'.
 """
 
 import sys

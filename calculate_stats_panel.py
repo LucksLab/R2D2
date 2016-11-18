@@ -1,3 +1,22 @@
+"""
+Calculate the performance statistics of RNAstructure-Fold on individual replicates in benchmark panel.
+
+Options:
+-r                = reactivities files regex
+-c                = crystal structure (.ct) files regex
+-o                = output directory
+-p                = number of threads to use, default 1
+--shape_intercept = Intercept used with SHAPE restraints in RNAstructure, default -0.3
+--shape_slope     = Slope used with SHAPE restraints in RNAstructure, default 1.1
+
+Version: 0.0.1
+Author: Angela M Yu, 2014-2016
+
+Copyright (C) 2016  Julius B. Lucks and Angela M Yu.
+All rights reserved.
+Distributed under the terms of the GNU General Public License, see 'LICENSE'.
+"""
+
 import SU
 import OSU
 import PAU
