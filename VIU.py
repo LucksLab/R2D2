@@ -24,8 +24,14 @@ def convert_center_resize(image, res):
     """
     Centers image and resizes.
     """
-    OSU.system_command("convert %s -alpha discrete -blur 0x1 -background none -gravity Center -extent %s %s.temp" % (image, res, image))
-    os.rename(image + ".temp", image)
+    try:
+        print "convert %s -alpha discrete -blur 0x1 -background none -gravity Center -extent %s %s.temp" % (image, res, image)
+        OSU.system_command("convert %s -alpha discrete -blur 0x1 -background none -gravity Center -extent %s %s.temp" % (image, res, image))
+        os.rename(image + ".temp", image)
+    except:
+        print "convert %s -background none -gravity Center -extent %s %s.temp" % (image, res, image)
+        OSU.system_command("convert %s -background none -gravity Center -extent %s %s.temp" % (image, res, image))
+        os.rename(image + ".temp", image)
 
 
 def convert_center(image):

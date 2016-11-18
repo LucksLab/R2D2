@@ -5,7 +5,7 @@ import NAU
 import LucksLabUtils_config
 import glob
 
-# setup environment variables specific to the ICSE cluster at Cornell
+# setup environment variables
 LucksLabUtils_config.config("Quest_R2D2")
 opts = OSU.getopts("o:c:r:p:", ["shape_intercept=", "shape_slope="])
 print opts
