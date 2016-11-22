@@ -38,7 +38,6 @@ print opts
 # in_dir, out_dir, adapter, e, endcut, constrained_c, scale_rho_max, draw_all, most_count_tie_break, scaling_func, weight_paired, cap_rhos, pol_fp
 # Only in_dir, out_dir, and adapter are truly required to run R2D2.R2D2(). Default values for the other parameters are set within R2D2.py.
 
-import ipdb; ipdb.set_trace() #JBL- entering debugging here
 cotrans = R2D2.R2D2(opts['--in_dir'], 
                     opts['--out_dir'], 
                     opts['--adapter'], 

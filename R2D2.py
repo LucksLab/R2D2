@@ -29,17 +29,18 @@ class R2D2:
     cotranscriptional folding pathway of an RNA that is supported by the data.
     """
 
+    #JBL - consider changing default values of constrained_c, scale_rho_max and weight_paired
     def __init__(self, inputdir, outputdir, adapterseq,
                  shape_slope=1.1, shape_intercept=-0.3, p=1, e=1000, endcut=0,
                  constrained_c=2.6, scale_rho_max=2.3, draw_all=True, most_count_tie_break=True,
-                 weight_paired=0.3, scaling_func="K", cap_rhos=True, pol_fp=0):
+                 weight_paired=0.3, scaling_func="K", cap_rhos=True, pol_fp=0): 
         """
         R2D2 (Reconstructing RNA Dynamics with Data) class definition.
 
         OPTIONS:
         # inputdir 	= Input directory containing reactitivy files
         # outputdir 	= Output directory
-        # adapterseq 	= Adapter sequence
+        # adapterseq 	= SHAPE-Seq 2.1 Adapter sequence
         # shape_slope 	= Slope used with SHAPE restraints in RNAstructure
         # shape_intercept = Intercept used with SHAPE restraints in RNAstructure
         # p 		= Number of threads to use
@@ -51,13 +52,15 @@ class R2D2:
         # constrained_c = Any rho value greater than or equal to this value will be forced as unpaired when sampling with hard constraints
         # scale_rho_max = If True or the 'D' distance is used, this value is the max value and all values greater than it are set to this max value
         # draw_all 	= Whether or not to show all best structures in the movie
-        # most_count_tie_break = Flag to use count of structures as the tie breaking criteria when showing only one structure in the movie (draw_all=False). If True, then the structure sampled the most from the pool of sampled structures is drawn.
+        # most_count_tie_break = Flag to use count of structures as the tie breaking criteria when showing only one structure in the movie (draw_all=False). 
+        #                        If True, then the structure sampled the most from the pool of sampled structures is drawn.
         # weight_paired = Weight given to paired regions in distance calculations.
         # scaling_func 	= Choice of distance function when choosing the best structure:
                             D: Bound to be between [0,1]
                             U: Rescale sampled structures to average to 1
                             K: Keep sampled structures and reactivities values. If cap_rhos is True, then reactivities will be capped.
-        # cap_rhos 	= Flag to have a max cutoff for reactivities when calculating distances for choosing the best structure
+        # cap_rhos 	= Flag to have a max cutoff for reactivities when calculating distances for choosing the best structure.
+        #             JBL - add comment to say this is used with scale_rho_max
         """
         self.file_data = defaultdict(dict)
         self.shape_slope = shape_slope
@@ -78,6 +81,7 @@ class R2D2:
         self.scaled_rhos = {}
         self.scaling_func = scaling_func
         self.cap_rhos = cap_rhos
+        import ipdb; ipdb.set_trace() #JBL- entering debugging here
         self.run()
 
     def run(self):
