@@ -81,7 +81,6 @@ class R2D2:
         self.scaled_rhos = {}
         self.scaling_func = scaling_func
         self.cap_rhos = cap_rhos
-        import ipdb; ipdb.set_trace() #JBL- entering debugging here
         self.run()
 
     def run(self):
@@ -92,8 +91,8 @@ class R2D2:
 
         max_best_states = -1  # max number of best states across the lengths
         OSU.create_directory(self.output_dir)
-        ct_dir = OSU.create_directory(self.output_dir + "/ct/")
-        pickle_dir = OSU.create_directory(self.output_dir + "/pickles/")
+        ct_dir = OSU.create_directory(self.output_dir + "/ct/") #JBL - extra // in this directory name
+        pickle_dir = OSU.create_directory(self.output_dir + "/pickles/") #JBL - extra // in this directory name
         infiles = glob.glob(self.input_dir + "/*_reactivities.txt")
 
         # Pre-processing all input reactivities files - trimming adapter, recalculating thetas, calculating rhos
@@ -101,6 +100,7 @@ class R2D2:
         rhos = {}
         rhos_cut = {}
 
+        #JBL TODO - check for 3 input files
         # Set up and run parallized calculations on each length
         args_pool = zip(infiles, repeat(self.output_dir), repeat(ct_dir),
                         repeat(pickle_dir), repeat(self.adapterseq),
@@ -111,6 +111,7 @@ class R2D2:
         print "run args_pool length: " + str(len(args_pool))
 
         if self.p > 1:  # start pool if multithread
+            #JBL TODO - check multithread with 3 input files
             pool = Pool(processes=self.p)
             for length_key, file_data_length_key, struct_distances_length, num_min_states, rho, rho_cut in pool.imap(PCSU.run_cotrans_length_helper, args_pool):
                 print "done length_key: " + str(length_key)
@@ -121,6 +122,7 @@ class R2D2:
                 rhos[length_key + self.endcut] = "\t".join([str(r) for r in rho]) + "\n"
                 rhos_cut[length_key + self.endcut] = "\t".join([str(r) for r in rho_cut]) + "\n"
         else:  # no multiprocessing
+            import ipdb; ipdb.set_trace() #JBL- entering debugging here
             for args_slice in args_pool:
                 length_key, file_data_length_key, struct_distances_length, num_min_states, rho, rho_cut = PCSU.run_cotrans_length_helper(args_slice)
                 print "done length_key: " + str(length_key)
