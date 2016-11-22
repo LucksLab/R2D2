@@ -14,6 +14,7 @@ import R2D2
 import LucksLabUtils_config
 import OSU
 
+import ipdb; ipdb.set_trace() #JBL- entering debugging here
 LucksLabUtils_config.config("Quest_R2D2")
 OSU.system_command("echo $PATH")
 OSU.system_command("echo $CLASSPATH")
