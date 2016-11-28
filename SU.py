@@ -210,7 +210,7 @@ def parse_reactivity_rho(file, adapterseq, outputfile, endcut=0):
     Parses reactivity file and outputs .theta and .seq, stripping off the
     adapter sequence (iteratively shrinking). Returns (positions, thetas,
     nt_sequence).
-    JBL - update documentation
+    JBL TODO - update documentation
     """
     try:
         with open(file, 'r') as f:
@@ -229,7 +229,8 @@ def parse_reactivity_rho(file, adapterseq, outputfile, endcut=0):
                 pos.append(vars[2])
                 untreated_sum.append(int(vars[5]))
                 treated_sum.append(int(vars[4]))
-
+            
+            import ipdb; ipdb.set_trace() #JBL- entering debugging here - breakpoint 3
             seqstring = "".join(seq)
             (seq_cut, adapter_len) = NAU.end_match_strip(seqstring, adapterseq)
 
