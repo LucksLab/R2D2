@@ -230,12 +230,13 @@ def parse_reactivity_rho(file, adapterseq, outputfile, endcut=0):
                 untreated_sum.append(int(vars[5]))
                 treated_sum.append(int(vars[4]))
             
-            import ipdb; ipdb.set_trace() #JBL- entering debugging here - breakpoint 3
+            #cutoff adapter sequence and calculate rhos
             seqstring = "".join(seq)
             (seq_cut, adapter_len) = NAU.end_match_strip(seqstring, adapterseq)
-
             rho = calc_rho_from_theta_list(recalc_thetas(theta, 0, -adapter_len))
-            # Also, endcut can be used to represent the polymerase footprint and remove these
+
+            # Remove endcut
+            # For example, endcut can be used to represent the polymerase footprint and remove these
             # bases from being used in the subsequent calculations.
             if endcut < 0:
                 seq_cut = seq_cut[:endcut]
@@ -244,11 +245,18 @@ def parse_reactivity_rho(file, adapterseq, outputfile, endcut=0):
             untreated_sum = untreated_sum[:-adapter_len]
             treated_sum = treated_sum[:-adapter_len]
 
+            # rc_sum = read count sum
+            # rc_flag = read count flag - used to flag lengths with low read counts
             rc_sum = sum(treated_sum) + sum(untreated_sum)
             rc_flag = 0 if (sum(treated_sum) + sum(untreated_sum) < 2000) else 1
 
+            # Recalculate thetas and rhos with total endcut (adapter_len + endcut specified above)
+            # JBL Q - why is this code block different from: 
+            #      rho = calc_rho_from_theta_list(recalc_thetas(theta, 0, -adapter_len))
             theta_cut = [str(t) for t in recalc_thetas(theta, 0, -adapter_len)]
             rho_cut = calc_rho_from_theta_list(theta_cut)
+            
+            # Output files
             try:
                 with open(outputfile+".theta", 'w') as out:
                     out.write("\n".join(["\t".join(z) for z in zip(pos, theta_cut)]))
@@ -389,7 +397,7 @@ def recalc_rhos(rhos, start_i, end_i):
 def recalc_thetas(thetas, start_i, end_i):
     """
     Recalculates theta values for a subsequence of the thetas.
-    It assumes that the given sequence of rhos is already normalized.
+    It assumes that the given sequence of rhos is already normalized. JBL Q - can we remove this comment line?
     """
     cut_thetas = [float(r) for r in thetas[start_i:end_i]]
     cut_thetas_sum = sum([float(r) for r in cut_thetas])

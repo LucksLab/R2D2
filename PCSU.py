@@ -83,8 +83,11 @@ def run_cotrans_length(file_l, output_dir, ct_dir, pickle_dir, adapterseq, endcu
     scaling_fns = {"D": SU.invert_scale_rho_vec, "U": SU.scale_vec_avg1, "K": SU.cap_rho_or_ct_list}
     fname = re.findall("([^/]+).txt$", file_l)
     output_file_prefix = output_dir+"/"+fname[0]
-    import ipdb; ipdb.set_trace() #JBL- entering debugging here - breakpoint 2
+
+    # theta, rho and seq have been cut by -adapter_len + endcut - pol_fp
     pos, rho_full, theta, rho, seq, rc_flag, rc_sum, rc_untreated_sum, rc_treated_sum = SU.parse_reactivity_rho(file_l, adapterseq, output_file_prefix, endcut - pol_fp)
+
+    import ipdb; ipdb.set_trace() #JBL- entering debugging here - breakpoint 2 - have checked reactivity parsing, endcutting and renormalization
     length_key = len(pos) + abs(endcut - pol_fp)
     file_data_length_key = {}
     file_data_length_key["filename"] = fname[0]
