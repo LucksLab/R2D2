@@ -87,7 +87,6 @@ def run_cotrans_length(file_l, output_dir, ct_dir, pickle_dir, adapterseq, endcu
     # theta, rho and seq have been cut by -adapter_len + endcut - pol_fp
     pos, rho_full, theta, rho, seq, rc_flag, rc_sum, rc_untreated_sum, rc_treated_sum = SU.parse_reactivity_rho(file_l, adapterseq, output_file_prefix, endcut - pol_fp)
 
-    import ipdb; ipdb.set_trace() #JBL- entering debugging here - breakpoint 2 - have checked reactivity parsing, endcutting and renormalization
     length_key = len(pos) + abs(endcut - pol_fp)
     file_data_length_key = {}
     file_data_length_key["filename"] = fname[0]
@@ -98,6 +97,7 @@ def run_cotrans_length(file_l, output_dir, ct_dir, pickle_dir, adapterseq, endcu
     sampled_structs_count = defaultdict(int)
     sampled_structs = set()
 
+    import ipdb; ipdb.set_trace() #JBL- entering debugging here - breakpoint 2 - have checked reactivity parsing, endcutting and renormalization
     # Vanilla Sampling
     structs, structs_labels = SU.RNAstructure_sample(output_file_prefix, e, output_dir, label="noshape", num_proc=1, wn_tag=str(length_key))
     sampled_structs.update(structs_labels)
