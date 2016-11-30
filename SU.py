@@ -585,6 +585,8 @@ def calc_bp_distance_vector_weighted(struct, rhos, scaling_func="none", max_r=-1
         print rhos
         raise Exception("calc_bp_distance_vector_weighted: length of lists not equal")
     struct_orig = [float(s) for s in struct]
+    if len(set(struct_orig) - set([0,1])) != 0:
+        raise Exception("calc_bp_distance_vector_weighted: struct must only contain 0's and 1's")
     num_paired = sum([1 if s > 0 else 0 for s in struct_orig])
     num_unpaired = len(struct) - num_paired
     if invert_struct:  # Assumes second array is a ct file
@@ -659,8 +661,8 @@ def calc_benchmark_statistics_matrix(react_mat, ct_mat):
     print "TP: " + str(TP)
     print "FN: " + str(FN)
     print "FP: " + str(FP)
-    bm_stats["F_score"] = 2*TP / float(2*TP + FN + FP)
-    bm_stats["Sensitivity"] = TP / float(TP + FN)
-    bm_stats["PPV"] = TP / float(TP + FP)
+    bm_stats["F_score"] = 2*TP / float(2*TP + FN + FP) if TP + FN + FP != 0 else float('nan')
+    bm_stats["Sensitivity"] = TP / float(TP + FN) if TP + FN != 0 else float('nan')
+    bm_stats["PPV"] = TP / float(TP + FP) if TP + FP != 0 else float('nan')
     print "Benchmark statistics: " + str(bm_stats)
     return bm_stats
