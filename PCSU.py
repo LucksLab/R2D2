@@ -97,7 +97,7 @@ def run_cotrans_length(file_l, output_dir, ct_dir, pickle_dir, adapterseq, endcu
     sampled_structs_count = defaultdict(int)
     sampled_structs = set()
 
-    import ipdb; ipdb.set_trace() #JBL- entering debugging here - breakpoint 2 - have checked reactivity parsing, endcutting and renormalization
+    import ipdb; ipdb.set_trace() 
     # Vanilla Sampling
     structs, structs_labels = SU.RNAstructure_sample(output_file_prefix, e, output_dir, label="noshape", num_proc=1, wn_tag=str(length_key))
     sampled_structs.update(structs_labels)
@@ -115,6 +115,7 @@ def run_cotrans_length(file_l, output_dir, ct_dir, pickle_dir, adapterseq, endcu
     sampled_structs.update(structs_labels)
     OSU.increment_dict_counts(sampled_structs_count, structs)
 
+    #JBL- entering debugging here - breakpoint 2 - have checked reactivity parsing, endcutting and renormalization, structure sampling by all three methods
     # Compressing sampled structures further by removing duplicates sampled by multiple methods. Keeping track of this though.
     sampled_structs = SU.merge_labels(sampled_structs, to_string=False)
     structs = [t[0].split(",") for t in sampled_structs]

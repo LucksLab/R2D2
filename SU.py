@@ -138,6 +138,8 @@ def RNAstructure_sample(in_file_prefix, e_val, output_dir, seqfile="", shapefile
     seed_list = random.sample(xrange(1, 10000000), len(e_list))  # possible to sample from stochastic up to 100000000
     args_pool = zip(range(len(e_list)), [in_file_prefix]*len(e_list), [output_dir]*len(e_list), e_list, seed_list, repeat(wn_tag))
     structs = collections.defaultdict(int)  # holds counts for each structure
+    
+    # JBL Q - it looks like we never call this with num_proc > 1 from PCSU. Can you verify?
     if num_proc == 1:
         # Do no parallelization here because only 1 thread is allowed
         for i in range(0, len(args_pool)):
