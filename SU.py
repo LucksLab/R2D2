@@ -589,7 +589,9 @@ def cap_rho_or_ct_list(arr, max_val=-1):
 
 def calc_bp_distance_vector_weighted(struct, rhos, scaling_func="none", max_r=-1, invert_struct=False, paired_weight=0.5):
     """
+    # JBL Q - this annotation seems incorrect since doing at both paired and unpaired positions.
     Calculate distance between a structure and rhos only at paired portions of the structure, normalized by number of paired and unpaired nt's in structure
+    # JBL Q - unclear what max_r is doing. Looks like using to do something to unpaired vectors. Please annotate.
     """
     if (len(struct) != len(rhos)):
         print struct
