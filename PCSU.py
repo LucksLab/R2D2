@@ -137,17 +137,17 @@ def run_cotrans_length(file_l, output_dir, ct_dir, pickle_dir, adapterseq, endcu
 
     # Compute distances between scaled rhos and paired-vectors from drawn structures
     binary_structs = SU.ct_struct_to_binary_vec(file_data_length_key["structs"])
-    import ipdb; ipdb.set_trace() 
     distances = []
+    #JBL- entering debugging here - breakpoint 2 - have checked reactivity parsing, endcutting and renormalization, structure sampling by all three methods, scaling rhos, distances (though needs to be modded)
+    #import ipdb; ipdb.set_trace() 
     for s in binary_structs:
         distances.append(SU.calc_bp_distance_vector_weighted(s, scaled_rhos, scaling_func=scaling_func, invert_struct="D" != scaling_func, paired_weight=weight_paired))
-    #JBL- entering debugging here - breakpoint 2 - have checked reactivity parsing, endcutting and renormalization, structure sampling by all three methods, scaling rhos, distances (though needs to be modded)
     file_data_length_key["distances"] = distances
     min_distance = min(distances)
     file_data_length_key["min_dist_indices"] = [i for i, v in enumerate(distances) if v == min_distance]
     file_data_length_key["min_distance"] = min_distance
     file_data_length_key["rc_flag"] = rc_flag
-    struct_distances = zip(file_data_length_key["structs"], distances)
+    struct_distances = zip(file_data_length_key["structs"], distances) 
 
     pickle.dump(file_data_length_key, open(pickle_dir + "file_data_" + str(length_key) + ".p", "wb"))
     return length_key, file_data_length_key, struct_distances, len(file_data_length_key["min_dist_indices"]), rho_full, rho

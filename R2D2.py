@@ -122,7 +122,6 @@ class R2D2:
                 rhos[length_key + self.endcut] = "\t".join([str(r) for r in rho]) + "\n"
                 rhos_cut[length_key + self.endcut] = "\t".join([str(r) for r in rho_cut]) + "\n"
         else:  # no multiprocessing
-            import ipdb; ipdb.set_trace() #JBL- entering debugging here - breakpoint 1
             for args_slice in args_pool:
                 length_key, file_data_length_key, struct_distances_length, num_min_states, rho, rho_cut = PCSU.run_cotrans_length_helper(args_slice)
                 print "done length_key: " + str(length_key)
@@ -147,7 +146,8 @@ class R2D2:
         for file_ext in ["rho", "theta", "seq", "pfs", "con", "efn2"]:
             OSU.create_directory(self.output_dir+file_ext+"_dir/")
             OSU.system_command("mv %s/*%s %s/%s_dir/" % (self.output_dir, file_ext, self.output_dir, file_ext))
-
+        
+        import ipdb; ipdb.set_trace() #JBL- entering debugging here - breakpoint 1
         self.generate_output()  # generate majority of output
 
     def generate_output(self):
