@@ -114,12 +114,12 @@ def run_cotrans_length(file_l, output_dir, ct_dir, pickle_dir, adapterseq, endcu
     sampled_structs.update(structs_labels)
     OSU.increment_dict_counts(sampled_structs_count, structs)
 
-    #JBL- entering debugging here - breakpoint 2 - have checked reactivity parsing, endcutting and renormalization, structure sampling by all three methods
-    import ipdb; ipdb.set_trace() 
     # Compressing sampled structures further by removing duplicates sampled by multiple methods. Keeping track of this though.
     sampled_structs = SU.merge_labels(sampled_structs, to_string=False)
     structs = [t[0].split(",") for t in sampled_structs]
     SU.cts_to_file(structs, seq, ct_dir+fname[0]+"_unique.ct")
+    #JBL- entering debugging here - breakpoint 2 - have checked reactivity parsing, endcutting and renormalization, structure sampling by all three methods
+    import ipdb; ipdb.set_trace() 
     SU.runRNAstructure_efn2(ct_dir+fname[0]+"_unique.ct", output_file_prefix + ".efn2")
     free_energies = SU.get_free_energy_efn2(output_file_prefix + ".efn2")
     file_data_length_key["free_energies"] = free_energies

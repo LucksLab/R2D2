@@ -188,7 +188,7 @@ def RNAstructure_sample_process_helper(args):
 def merge_labels(list_sl, to_string=True):
     """
     Merges labels of a list of tuples where the second element in the tuple is the label.
-    to_String: flag if True, then the labels are turned into a string. Else, labels are kept as a list.
+    to_String: flag if True, then the labels are turned into a string. Else, labels are kept as a comma separated list.
     """
     sampled_structs_dict = {}
     for e in list_sl:
@@ -198,7 +198,7 @@ def merge_labels(list_sl, to_string=True):
         else:
             labels = list(set(OSU.flatten_list([b.split(",") for b in e[1]])))
         if to_string:
-            struct_string = ",".join(e[0])
+            struct_string = ",".join(e[0]) #JBL Q: this is flattening the struct_string to a string, not the labels as indicated in documentation above?
         for l in labels:
             if struct_string not in sampled_structs_dict:
                 sampled_structs_dict[struct_string] = [l]
@@ -436,9 +436,9 @@ def cts_to_file(cts, seq, filename):
     Take multiple ct's in list form and makes one .ct file. The output will not
     be formatted like RNAstructure's output, but will be properly interpreted.
     """
-    #JBLQ - reminder to check this. This would be a good candidate for a unit test that
+    #JBL Q - reminder to check this. This would be a good candidate for a unit test that
     # took an input ct, convertedit to a list, then used this to get back to a ct file.
-    # could verify gives same energy with efn2 as well.
+    # could verify gives same energy with efn2 as well. (Angela - please resolve this comment. Maybe mark as a future TODO? )
     open(filename, 'w').close()
     for i in range(len(cts)):  # loop through each ct
         ct = cts[i]
