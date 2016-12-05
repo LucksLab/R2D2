@@ -136,9 +136,9 @@ def run_cotrans_length(file_l, output_dir, ct_dir, pickle_dir, adapterseq, endcu
         f.write("\n".join(["\t".join([str(zi), str(zr)]) for zi,zr in enumerate(scaled_rhos)]))
 
     # Compute distances between scaled rhos and paired-vectors from drawn structures
+    binary_structs = SU.ct_struct_to_binary_vec(file_data_length_key["structs"])
     #JBL- entering debugging here - breakpoint 2 - have checked reactivity parsing, endcutting and renormalization, structure sampling by all three methods, scaling rhos
     import ipdb; ipdb.set_trace() 
-    binary_structs = SU.ct_struct_to_binary_vec(file_data_length_key["structs"])
     distances = []
     for s in binary_structs:
         distances.append(SU.calc_bp_distance_vector_weighted(s, scaled_rhos, scaling_func=scaling_func, invert_struct="D" != scaling_func, paired_weight=weight_paired))
