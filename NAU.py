@@ -141,7 +141,7 @@ def discover(fastq):
     # Check that the file is fasta
     extension = fastq.split(".")[-1]
     if extension != "fq" and extension != "fastq":
-        print("File is not a fasta extension (fq,fastq)")
+        print("File is not a FASTQ extension (fq,fastq)")
 
     # Check file exists
     elif not os.path.isfile(fastq):
