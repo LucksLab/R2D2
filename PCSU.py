@@ -75,7 +75,7 @@ def run_cotrans_length(file_l, output_dir, ct_dir, pickle_dir, adapterseq, endcu
     scaling_func: Choice of distance function when choosing the best structure:
                 D: Make reactivities to be bound between [0,1]
                 U: Rescale structures to average to 1
-                K: Scaling of reactivities and structures are kept
+                K: Scaling of reactivities and structures are kept #JBL Q - can this be more descriptive? Right now looks like just capping rhos and not doing any rescaling
     weight_paired: Weight given to paired regions in distance calculations
     """
 
@@ -118,8 +118,6 @@ def run_cotrans_length(file_l, output_dir, ct_dir, pickle_dir, adapterseq, endcu
     sampled_structs = SU.merge_labels(sampled_structs, to_string=False)
     structs = [t[0].split(",") for t in sampled_structs]
     SU.cts_to_file(structs, seq, ct_dir+fname[0]+"_unique.ct")
-    #JBL- entering debugging here - breakpoint 2 - have checked reactivity parsing, endcutting and renormalization, structure sampling by all three methods
-    import ipdb; ipdb.set_trace() 
     SU.runRNAstructure_efn2(ct_dir+fname[0]+"_unique.ct", output_file_prefix + ".efn2")
     free_energies = SU.get_free_energy_efn2(output_file_prefix + ".efn2")
     file_data_length_key["free_energies"] = free_energies
@@ -138,6 +136,8 @@ def run_cotrans_length(file_l, output_dir, ct_dir, pickle_dir, adapterseq, endcu
         f.write("\n".join(["\t".join([str(zi), str(zr)]) for zi,zr in enumerate(scaled_rhos)]))
 
     # Compute distances between scaled rhos and paired-vectors from drawn structures
+    #JBL- entering debugging here - breakpoint 2 - have checked reactivity parsing, endcutting and renormalization, structure sampling by all three methods, scaling rhos
+    import ipdb; ipdb.set_trace() 
     binary_structs = SU.ct_struct_to_binary_vec(file_data_length_key["structs"])
     distances = []
     for s in binary_structs:
