@@ -587,8 +587,6 @@ def calc_bp_distance_vector_weighted(struct, rhos, scaling_func="none", max_r=-1
     struct_orig = [float(s) for s in struct]
     if len(set(struct_orig) - set([0,1])) != 0:
         raise Exception("calc_bp_distance_vector_weighted: struct must only contain 0's and 1's")
-    num_paired = sum([1 if s > 0 else 0 for s in struct_orig])
-    num_unpaired = len(struct) - num_paired
     if invert_struct:  # Assumes second array is a ct file
         struct = [1 - float(a) for a in struct]
     else:
@@ -597,8 +595,8 @@ def calc_bp_distance_vector_weighted(struct, rhos, scaling_func="none", max_r=-1
         scaling_func = "none"
     scaling_fns = {"U": scale_vec_avg1, "none": cap_rho_or_ct_list}
     struct = scaling_fns[scaling_func](struct, max_r)
-    diffs_paired = [abs(a1 - float(a2))/num_paired for a1, a2, a3 in zip(struct, rhos, struct_orig) if a3 == 1]
-    diffs_unpaired = [abs(a1 - float(a2))/num_unpaired for a1, a2, a3 in zip(struct, rhos, struct_orig) if a3 == 0]
+    diffs_paired = [abs(a1 - float(a2)) for a1, a2, a3 in zip(struct, rhos, struct_orig) if a3 == 1]
+    diffs_unpaired = [abs(a1 - float(a2)) for a1, a2, a3 in zip(struct, rhos, struct_orig) if a3 == 0]
 
     struct = struct_orig[:]  # copy original struct back
     return float(paired_weight)*sum(diffs_paired) + (1 - float(paired_weight))*sum(diffs_unpaired)
