@@ -139,6 +139,7 @@ def run_cotrans_length(file_l, output_dir, ct_dir, pickle_dir, adapterseq, endcu
     binary_structs = SU.ct_struct_to_binary_vec(file_data_length_key["structs"])
     distances = []
     #JBL- entering debugging here - breakpoint 2 - have checked reactivity parsing, endcutting and renormalization, structure sampling by all three methods, scaling rhos, distances (though needs to be modded)
+    # JBL TODO - check distance calculation once benchmarking re-run
     #import ipdb; ipdb.set_trace() 
     for s in binary_structs:
         distances.append(SU.calc_bp_distance_vector_weighted(s, scaled_rhos, scaling_func=scaling_func, invert_struct="D" != scaling_func, paired_weight=weight_paired))
@@ -169,6 +170,7 @@ def generate_DG_output(cotrans, start=-1, end=-1):
             min_DG = min(DG)
             best = cotrans.file_data[length]["min_dist_indices"]  # list of struct_num of min_distance
 
+            #JBL Q - any way to make this code block less confusing?
             line = ["\t".join([str(le[0]),  # nt
                                str(le[1]),  # DG
                                str(int(min_DG == le[1])),  # mfe_flag
