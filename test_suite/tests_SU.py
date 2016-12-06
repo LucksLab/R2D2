@@ -108,29 +108,29 @@ def test_cap_rho_or_ct_list():
 def test_calc_bp_distance_vector_weighted():
     struct = [1, 1, 0]
     rho = [1, 2, 0]
-    assert_equals(SU.calc_bp_distance_vector_weighted(struct, rho), 0.25)
-    assert_equals(SU.calc_bp_distance_vector_weighted(struct, rho, scaling_func="D"), 0.25)
-    assert_equals(SU.calc_bp_distance_vector_weighted(struct, rho, scaling_func="K"), 0.25)
-    assert_equals(SU.calc_bp_distance_vector_weighted(struct, rho, scaling_func="U"), 0.25)
-    assert_equals(SU.calc_bp_distance_vector_weighted(struct, rho, scaling_func="D", max_r=0.9), 0.25*(0.1+1.1))
-    assert_equals(SU.calc_bp_distance_vector_weighted(struct, rho, scaling_func="D", invert_struct=True), 3*0.25+0.5)
-    assert_equals(SU.calc_bp_distance_vector_weighted(struct, rho, scaling_func="D", paired_weight=1), 0.5)
+    assert_equals(SU.calc_bp_distance_vector_weighted(struct, rho), 0.5)
+    assert_equals(SU.calc_bp_distance_vector_weighted(struct, rho, scaling_func="D"), 0.5)
+    assert_equals(SU.calc_bp_distance_vector_weighted(struct, rho, scaling_func="K"), 0.5)
+    assert_equals(SU.calc_bp_distance_vector_weighted(struct, rho, scaling_func="U"), 0.5)
+    assert_equals(SU.calc_bp_distance_vector_weighted(struct, rho, scaling_func="D", max_r=0.9), 0.5*(0.1+1.1))
+    assert_equals(SU.calc_bp_distance_vector_weighted(struct, rho, scaling_func="D", invert_struct=True), 3*0.5+0.5)
+    assert_equals(SU.calc_bp_distance_vector_weighted(struct, rho, scaling_func="D", paired_weight=1), 1)
 
     struct = [1, 0, 1] # paired, unpaired, paired
     rho = SU.invert_scale_rho_vec([2, 0, 0], 1.8)
 
-    assert_equals(SU.calc_bp_distance_vector_weighted(struct, rho, scaling_func="D", paired_weight=0.6), 0.6*1/2+0.4*1)
-    assert_equals(SU.calc_bp_distance_vector_weighted(struct, rho, scaling_func="D", paired_weight=0.9), 0.9*1/2+0.1*1)
-    assert_equals(SU.calc_bp_distance_vector_weighted(struct, rho, scaling_func="D", paired_weight=0.1), 0.1*1/2+0.9*1)
-    assert_equals(SU.calc_bp_distance_vector_weighted(struct, rho, scaling_func="D", paired_weight=0.3), 0.3*1/2+0.7*1)
+    assert_equals(SU.calc_bp_distance_vector_weighted(struct, rho, scaling_func="D", paired_weight=0.6), 1)
+    assert_equals(SU.calc_bp_distance_vector_weighted(struct, rho, scaling_func="D", paired_weight=0.9), 1)
+    assert_equals(SU.calc_bp_distance_vector_weighted(struct, rho, scaling_func="D", paired_weight=0.1), 1)
+    assert_equals(SU.calc_bp_distance_vector_weighted(struct, rho, scaling_func="D", paired_weight=0.3), 1)
 
     struct = [1, 0, 1] # paired, unpaired, paired
     rho = SU.invert_scale_rho_vec([2, 0.1, 0], 1.8)
 
-    assert_almost_equal(SU.calc_bp_distance_vector_weighted(struct, rho, scaling_func="D", paired_weight=0.6), 0.6*1/2+0.4*(1-0.1/1.8))
-    assert_almost_equal(SU.calc_bp_distance_vector_weighted(struct, rho, scaling_func="D", paired_weight=0.9), 0.9*1/2+0.1*(1-0.1/1.8))
-    assert_almost_equal(SU.calc_bp_distance_vector_weighted(struct, rho, scaling_func="D", paired_weight=0.1), 0.1*1/2+0.9*(1-0.1/1.8))
-    assert_almost_equal(SU.calc_bp_distance_vector_weighted(struct, rho, scaling_func="D", paired_weight=0.3), 0.3*1/2+0.7*(1-0.1/1.8))
+    assert_almost_equal(SU.calc_bp_distance_vector_weighted(struct, rho, scaling_func="D", paired_weight=0.6), 0.6+0.4*(1-0.1/1.8))
+    assert_almost_equal(SU.calc_bp_distance_vector_weighted(struct, rho, scaling_func="D", paired_weight=0.9), 0.9+0.1*(1-0.1/1.8))
+    assert_almost_equal(SU.calc_bp_distance_vector_weighted(struct, rho, scaling_func="D", paired_weight=0.1), 0.1+0.9*(1-0.1/1.8))
+    assert_almost_equal(SU.calc_bp_distance_vector_weighted(struct, rho, scaling_func="D", paired_weight=0.3), 0.3+0.7*(1-0.1/1.8))
 
 
 def test_calc_bp_distance_matrix():
