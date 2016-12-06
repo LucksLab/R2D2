@@ -106,7 +106,6 @@ for k, v in reactivities.iteritems():
     react_rhos = SU.recalc_rhos(react_rhos, ind_of_match, end_of_match)
 
     # remove 5' from rhos used in further in the analysis
-    # reactivities[k][0] = react_rhos[ind_of_match:]
     reactivities[k][0] = react_rhos
     reactivities[k][1] = react_seq
     SU.rhos_list_to_file(reactivities[k][0], reactivities[k][2]+".rho")
@@ -140,8 +139,8 @@ react_rhos = dict((k, reactivities[k][0]) for k in reactivities)
 constrain_rho_F = {}
 
 # Reduce search space
-rho_midpoints = [0.1 * i for i in range(7, 61)]
-weights = [0.1 * i for i in range(11)]
+rho_midpoints = [0.1 * i for i in range(7, 41)]
+weights = [0.1 * i for i in range(1,10)]
 print "Parameter values to test: "
 print "rho_max and rho_c: " + str(rho_midpoints)
 print "weights: " + str(weights) + "\n"
