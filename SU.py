@@ -140,6 +140,7 @@ def RNAstructure_sample(in_file_prefix, e_val, output_dir, seqfile="", shapefile
     structs = collections.defaultdict(int)  # holds counts for each structure
     
     # JBL Q - it looks like we never call this with num_proc > 1 from PCSU. Can you verify?
+    # AMY - Yes, the num_proc > 1 case was from when I did not use multiprocessing.Pool in PCSU.py and wanted RNAStructure calls to be parallelized.
     if num_proc == 1:
         # Do no parallelization here because only 1 thread is allowed
         for i in range(0, len(args_pool)):
@@ -188,7 +189,7 @@ def RNAstructure_sample_process_helper(args):
 def merge_labels(list_sl, to_string=True):
     """
     Merges labels of a list of tuples where the second element in the tuple is the label.
-    to_String: flag if True, then the labels are turned into a string. Else, labels are kept as a comma separated list.
+    to_String: flag if True, then the structs are turned into a string. Else, structs are kept as a comma separated list.
     """
     sampled_structs_dict = {}
     for e in list_sl:
@@ -198,7 +199,7 @@ def merge_labels(list_sl, to_string=True):
         else:
             labels = list(set(OSU.flatten_list([b.split(",") for b in e[1]])))
         if to_string:
-            struct_string = ",".join(e[0]) #JBL Q: this is flattening the struct_string to a string, not the labels as indicated in documentation above?
+            struct_string = ",".join(e[0]) #JBL Q: this is flattening the struct_string to a string, not the labels as indicated in documentation above?  #AMY: Yes, fixed it.
         for l in labels:
             if struct_string not in sampled_structs_dict:
                 sampled_structs_dict[struct_string] = [l]
@@ -255,6 +256,7 @@ def parse_reactivity_rho(file, adapterseq, outputfile, endcut=0):
             # Recalculate thetas and rhos with total endcut (adapter_len + endcut specified above)
             # JBL Q - why is this code block different from: 
             #      rho = calc_rho_from_theta_list(recalc_thetas(theta, 0, -adapter_len))
+            # AMY - line 239 calculates rhos removing only the adapter and below removes adapter and endcut for both theta and rho calculation
             theta_cut = [str(t) for t in recalc_thetas(theta, 0, -adapter_len)]
             rho_cut = calc_rho_from_theta_list(theta_cut)
             
@@ -399,7 +401,6 @@ def recalc_rhos(rhos, start_i, end_i):
 def recalc_thetas(thetas, start_i, end_i):
     """
     Recalculates theta values for a subsequence of the thetas.
-    It assumes that the given sequence of rhos is already normalized. JBL Q - can we remove this comment line?
     """
     cut_thetas = [float(r) for r in thetas[start_i:end_i]]
     cut_thetas_sum = sum([float(r) for r in cut_thetas])
@@ -436,9 +437,6 @@ def cts_to_file(cts, seq, filename):
     Take multiple ct's in list form and makes one .ct file. The output will not
     be formatted like RNAstructure's output, but will be properly interpreted.
     """
-    #JBL Q - reminder to check this. This would be a good candidate for a unit test that
-    # took an input ct, convertedit to a list, then used this to get back to a ct file.
-    # could verify gives same energy with efn2 as well. (Angela - please resolve this comment. Maybe mark as a future TODO? )
     open(filename, 'w').close()
     for i in range(len(cts)):  # loop through each ct
         ct = cts[i]
@@ -559,7 +557,6 @@ def ct_struct_to_binary_vec(ct):
 
 def ct_struct_to_binary_mat(ct):
     """ .ct structure(s) in numeric or string form to 0/1 representation """
-    #JBLQ - good candidate for a unit test here
     ret = []
     if isinstance(ct[0], int) or isinstance(ct[0], str):
         ret = [([0] * len(ct)) for r in xrange(len(ct))]
@@ -589,9 +586,12 @@ def cap_rho_or_ct_list(arr, max_val=-1):
 
 def calc_bp_distance_vector_weighted(struct, rhos, scaling_func="none", max_r=-1, invert_struct=False, paired_weight=0.5):
     """
-    # JBL Q - this annotation seems incorrect since doing at both paired and unpaired positions.
-    Calculate distance between a structure and rhos only at paired portions of the structure, normalized by number of paired and unpaired nt's in structure
-    # JBL Q - unclear what max_r is doing. Looks like using to do something to unpaired vectors. Please annotate.
+    Calculate distance between a structure and rhos, weighted by paired_weight to positions that are predicted to be
+    paired and 1 - paired_weight at positions that are predicted to be unpaired.
+    scaling_func = determines which distance method to use
+    max_r = if not equal to -1, it caps the structure to max_r
+    invert_struct = Flag to switch 0's to 1's and 1's to 0's in struct for distance calculation
+    paired_weight = weight given to differences between rhos and struct at bases predicted to be paired.
     """
     if (len(struct) != len(rhos)):
         print struct
@@ -608,8 +608,8 @@ def calc_bp_distance_vector_weighted(struct, rhos, scaling_func="none", max_r=-1
         scaling_func = "none"
     scaling_fns = {"U": scale_vec_avg1, "none": cap_rho_or_ct_list}
     struct = scaling_fns[scaling_func](struct, max_r)
-    diffs_paired = [abs(a1 - float(a2))/num_paired for a1, a2, a3 in zip(struct, rhos, struct_orig) if a3 == 1]
-    diffs_unpaired = [abs(a1 - float(a2))/num_unpaired for a1, a2, a3 in zip(struct, rhos, struct_orig) if a3 == 0]
+    diffs_paired = [abs(a1 - float(a2)) for a1, a2, a3 in zip(struct, rhos, struct_orig) if a3 == 1]
+    diffs_unpaired = [abs(a1 - float(a2)) for a1, a2, a3 in zip(struct, rhos, struct_orig) if a3 == 0]
 
     struct = struct_orig[:]  # copy original struct back
     return float(paired_weight)*sum(diffs_paired) + (1 - float(paired_weight))*sum(diffs_unpaired)
@@ -672,8 +672,8 @@ def calc_benchmark_statistics_matrix(react_mat, ct_mat):
     print "TP: " + str(TP)
     print "FN: " + str(FN)
     print "FP: " + str(FP)
-    bm_stats["F_score"] = 2*TP / float(2*TP + FN + FP)
-    bm_stats["Sensitivity"] = TP / float(TP + FN)
-    bm_stats["PPV"] = TP / float(TP + FP)
+    bm_stats["F_score"] = 2*TP / float(2*TP + FN + FP) if TP + FN + FP != 0 else float('nan')
+    bm_stats["Sensitivity"] = TP / float(TP + FN) if TP + FN != 0 else float('nan')
+    bm_stats["PPV"] = TP / float(TP + FP) if TP + FP != 0 else float('nan')
     print "Benchmark statistics: " + str(bm_stats)
     return bm_stats

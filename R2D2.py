@@ -30,10 +30,11 @@ class R2D2:
     """
 
     #JBL - consider changing default values of constrained_c, scale_rho_max and weight_paired
+    # AMY - Updated to one of the weighted average K parameters
     def __init__(self, inputdir, outputdir, adapterseq,
                  shape_slope=1.1, shape_intercept=-0.3, p=1, e=1000, endcut=0,
-                 constrained_c=2.6, scale_rho_max=2.3, draw_all=True, most_count_tie_break=True,
-                 weight_paired=0.3, scaling_func="K", cap_rhos=True, pol_fp=0): 
+                 constrained_c=3.5, scale_rho_max=1, draw_all=True, most_count_tie_break=True,
+                 weight_paired=0.8, scaling_func="K", cap_rhos=True, pol_fp=0): 
         """
         R2D2 (Reconstructing RNA Dynamics with Data) class definition.
 
@@ -91,8 +92,8 @@ class R2D2:
 
         max_best_states = -1  # max number of best states across the lengths
         OSU.create_directory(self.output_dir)
-        ct_dir = OSU.create_directory(self.output_dir + "/ct/") #JBL - extra // in this directory name
-        pickle_dir = OSU.create_directory(self.output_dir + "/pickles/") #JBL - extra // in this directory name
+        ct_dir = OSU.create_directory(self.output_dir + "/ct/") #JBL - extra // in this directory name  # AMY - did this on purpose in case user forgets a trailing '/'
+        pickle_dir = OSU.create_directory(self.output_dir + "/pickles/") #JBL - extra // in this directory name  # AMY - did this on purpose in case user forgets a trailing '/'
         infiles = glob.glob(self.input_dir + "/*_reactivities.txt")
 
         # Pre-processing all input reactivities files - trimming adapter, recalculating thetas, calculating rhos
@@ -147,7 +148,7 @@ class R2D2:
             OSU.create_directory(self.output_dir+file_ext+"_dir/")
             OSU.system_command("mv %s/*%s %s/%s_dir/" % (self.output_dir, file_ext, self.output_dir, file_ext))
         
-        import ipdb; ipdb.set_trace() #JBL- entering debugging here - breakpoint 1
+        #import ipdb; ipdb.set_trace() #JBL- entering debugging here - breakpoint 1
         self.generate_output()  # generate majority of output
 
     def generate_output(self):

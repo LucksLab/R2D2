@@ -47,6 +47,6 @@ Distributed under the terms of the GNU General Public License, see 'LICENSE'.
 
 cwd=`pwd`
 
-#python ../analyze_cotrans_SHAPE-Seq.py --in_dir "$cwd/reactivities_3/" --out_dir "$cwd/CoTrans_example_output/" --adapter "CTGACTCGGGCACCAAGG" --e 100 --endcut 0 --constrained_c "1.8" --scale_rho_max "1.8" --draw_all "False" --most_count_tie_break "False" --weight_paired "0.5" --scaling_func "K" --cap_rhos "True" --pol_fp 14 --p 1
+python ../analyze_cotrans_SHAPE-Seq.py --in_dir "$cwd/reactivities_3/" --out_dir "$cwd/CoTrans_example_output/" --adapter "CTGACTCGGGCACCAAGG" --e 100 --endcut 0 --constrained_c "1.8" --scale_rho_max "1.8" --draw_all "False" --most_count_tie_break "False" --weight_paired "0.5" --scaling_func "K" --cap_rhos "True" --pol_fp 14 --p 1
 
 python ../analyze_cotrans_SHAPE-Seq.py --in_dir "$cwd/reactivities_1/" --out_dir "$cwd/CoTrans_example_output_1/" --adapter "CTGACTCGGGCACCAAGG" --e 2 --endcut 0 --constrained_c "1.8" --scale_rho_max "1.8" --draw_all "False" --most_count_tie_break "False" --weight_paired "0.5" --scaling_func "K" --cap_rhos "True" --pol_fp 14 --p 1

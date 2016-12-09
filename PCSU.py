@@ -75,7 +75,7 @@ def run_cotrans_length(file_l, output_dir, ct_dir, pickle_dir, adapterseq, endcu
     scaling_func: Choice of distance function when choosing the best structure:
                 D: Make reactivities to be bound between [0,1]
                 U: Rescale structures to average to 1
-                K: Scaling of reactivities and structures are kept #JBL Q - can this be more descriptive? Right now looks like just capping rhos and not doing any rescaling
+                K: Reactivities are capped and no further rescaling is done
     weight_paired: Weight given to paired regions in distance calculations
     """
 
@@ -170,14 +170,14 @@ def generate_DG_output(cotrans, start=-1, end=-1):
             min_DG = min(DG)
             best = cotrans.file_data[length]["min_dist_indices"]  # list of struct_num of min_distance
 
-            #JBL Q - any way to make this code block less confusing?
-            line = ["\t".join([str(le[0]),  # nt
-                               str(le[1]),  # DG
-                               str(int(min_DG == le[1])),  # mfe_flag
+            line = ["\t".join([str(length),  # nt
+                               str(dg),  # DG
+                               str(int(min_DG == dg)),  # mfe_flag
                                str(int(c in best)),  # best_flag
                                str(cotrans.file_data[length]["distances"][c]),  # distance
                                str(cotrans.file_data[length]["rc_flag"])])  # rc_flag
-                    for le, c in zip(zip(cycle([length]), DG), range(len(DG)))]
+                    for dg, c in zip(DG, range(len(DG)))]
+
             dump.write("\n".join(line))
             dump.write("\n")
 
