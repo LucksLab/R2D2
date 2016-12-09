@@ -75,7 +75,7 @@ def run_cotrans_length(file_l, output_dir, ct_dir, pickle_dir, adapterseq, endcu
     scaling_func: Choice of distance function when choosing the best structure:
                 D: Make reactivities to be bound between [0,1]
                 U: Rescale structures to average to 1
-                K: Scaling of reactivities and structures are kept
+                K: Reactivities are capped and no further rescaling is done
     weight_paired: Weight given to paired regions in distance calculations
     """
 
@@ -83,7 +83,10 @@ def run_cotrans_length(file_l, output_dir, ct_dir, pickle_dir, adapterseq, endcu
     scaling_fns = {"D": SU.invert_scale_rho_vec, "U": SU.scale_vec_avg1, "K": SU.cap_rho_or_ct_list}
     fname = re.findall("([^/]+).txt$", file_l)
     output_file_prefix = output_dir+"/"+fname[0]
+
+    # theta, rho and seq have been cut by -adapter_len + endcut - pol_fp
     pos, rho_full, theta, rho, seq, rc_flag, rc_sum, rc_untreated_sum, rc_treated_sum = SU.parse_reactivity_rho(file_l, adapterseq, output_file_prefix, endcut - pol_fp)
+
     length_key = len(pos) + abs(endcut - pol_fp)
     file_data_length_key = {}
     file_data_length_key["filename"] = fname[0]
@@ -135,6 +138,9 @@ def run_cotrans_length(file_l, output_dir, ct_dir, pickle_dir, adapterseq, endcu
     # Compute distances between scaled rhos and paired-vectors from drawn structures
     binary_structs = SU.ct_struct_to_binary_vec(file_data_length_key["structs"])
     distances = []
+    #JBL- entering debugging here - breakpoint 2 - have checked reactivity parsing, endcutting and renormalization, structure sampling by all three methods, scaling rhos, distances (though needs to be modded)
+    # JBL TODO - check distance calculation once benchmarking re-run
+    #import ipdb; ipdb.set_trace() 
     for s in binary_structs:
         distances.append(SU.calc_bp_distance_vector_weighted(s, scaled_rhos, scaling_func=scaling_func, invert_struct="D" != scaling_func, paired_weight=weight_paired))
     file_data_length_key["distances"] = distances
@@ -142,7 +148,7 @@ def run_cotrans_length(file_l, output_dir, ct_dir, pickle_dir, adapterseq, endcu
     file_data_length_key["min_dist_indices"] = [i for i, v in enumerate(distances) if v == min_distance]
     file_data_length_key["min_distance"] = min_distance
     file_data_length_key["rc_flag"] = rc_flag
-    struct_distances = zip(file_data_length_key["structs"], distances)
+    struct_distances = zip(file_data_length_key["structs"], distances) 
 
     pickle.dump(file_data_length_key, open(pickle_dir + "file_data_" + str(length_key) + ".p", "wb"))
     return length_key, file_data_length_key, struct_distances, len(file_data_length_key["min_dist_indices"]), rho_full, rho
@@ -164,13 +170,14 @@ def generate_DG_output(cotrans, start=-1, end=-1):
             min_DG = min(DG)
             best = cotrans.file_data[length]["min_dist_indices"]  # list of struct_num of min_distance
 
-            line = ["\t".join([str(le[0]),  # nt
-                               str(le[1]),  # DG
-                               str(int(min_DG == le[1])),  # mfe_flag
+            line = ["\t".join([str(length),  # nt
+                               str(dg),  # DG
+                               str(int(min_DG == dg)),  # mfe_flag
                                str(int(c in best)),  # best_flag
                                str(cotrans.file_data[length]["distances"][c]),  # distance
                                str(cotrans.file_data[length]["rc_flag"])])  # rc_flag
-                    for le, c in zip(zip(cycle([length]), DG), range(len(DG)))]
+                    for dg, c in zip(DG, range(len(DG)))]
+
             dump.write("\n".join(line))
             dump.write("\n")
 

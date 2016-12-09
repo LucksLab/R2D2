@@ -22,6 +22,10 @@ Distributed under the terms of the GNU General Public License, see 'LICENSE'.
 import sys
 sys.path.insert(0,'..')
 import SU
+<<<<<<< HEAD
+=======
+import LucksLabUtils_config
+>>>>>>> JBL-code-review
 from nose.tools import assert_equals
 from numpy.testing import assert_array_almost_equal, assert_almost_equal, assert_equal
 from numpy import array_equal
@@ -187,6 +191,8 @@ class TestSU:
         cls.reactivity_file = "test_reactivities.txt"
         cls.adapterseq = "CTGACTCGGGCACCAAGG"
         cls.theta_file = "test_theta.theta"
+        cls.ctfile_1 = "test_1.ct"
+        cls.ctfile_2 = "test_2.ct"
 
 
     @classmethod
@@ -234,13 +240,65 @@ class TestSU:
 
     #ct_list_to_file
 
-    #cts_to_file
+
+    def test_cts_to_file(self):
+       cts = SU.get_ct_structs(self.ctfile_1)
+       SU.cts_to_file(cts, "A", self.outputfile)
+       with open(self.ctfile_1, "r") as f:
+           lines_orig = f.readlines()
+       with open(self.outputfile, "r") as f:
+           lines = f.readlines()
+       for l in zip(lines_orig, lines):
+           orig = l[0].split()
+           if "/" in orig[1]:
+               assert_equals(orig[0], l[1].split()[0])
+           else:
+               assert_equals(orig, l[1].split())
+
+       cts = SU.get_ct_structs(self.ctfile_2)
+       SU.cts_to_file(cts, "AUCGGGGG", self.outputfile)
+       with open(self.ctfile_2, "r") as f:
+           lines_orig = f.readlines()
+       with open(self.outputfile, "r") as f:
+           lines = f.readlines()
+       for l in zip(lines_orig, lines):
+           orig = l[0].split()
+           if "/" in orig[1]:
+               assert_equals(orig[0], l[1].split()[0])
+           else:
+               assert_equals(orig, l[1].split())
+
 
     #make_constraint_file
 
-    #get_free_energy_efn2
 
-    #get_ct_structs
+    def test_get_free_energy_efn2(self):
+        LucksLabUtils_config.config("Quest_R2D2")
+        SU.runRNAstructure_efn2(self.ctfile_1, self.outputfile)
+        energy = SU.get_free_energy_efn2(self.outputfile)
+        assert_equals([0], energy)
+
+        SU.runRNAstructure_efn2(self.ctfile_2, self.outputfile)
+        energy = SU.get_free_energy_efn2(self.outputfile)
+        assert_equals([5.7, 0.0, 4.1, 3.9], energy)
+
+
+    def test_get_ct_structs(self):
+        cts = SU.get_ct_structs(self.ctfile_1)
+        assert_equals([['0']], cts)
+
+        cts = SU.get_ct_structs(self.ctfile_2)
+        zeros = ["0"] * 8
+        orig = [zeros[:], zeros[:], zeros[:], zeros[:]]
+        orig[0][1] = '8'
+        orig[0][-1] = '2'
+        orig[2][1] = '8'
+        orig[2][-1] = '2'
+        orig[2][2] = '7'
+        orig[2][-2] = '3'
+        orig[3][2] = '7'
+        orig[3][-2] = '3'
+        assert_equals(orig, cts)
+
 
     #ct_file_to_struct_file
-
