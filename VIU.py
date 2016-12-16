@@ -24,6 +24,13 @@ def vertical_image_concat(outfile, images):
     OSU.system_command("convert -append " + " ".join(images) + " " + outfile)
 
 
+def horizontal_image_concat(outfile, images):
+    """
+    Horizontal concatenate images to a new image file.
+    """
+    OSU.system_command("convert +append " + " ".join(images) + " " + outfile)
+
+
 def convert_center_resize(image, res):
     """
     Centers image and resizes.
