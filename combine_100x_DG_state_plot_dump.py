@@ -46,7 +46,6 @@ for count, td in enumerate(times_dirs):
             OSU.system_command("tar -zxvf %sresults_except_draw.tgz ./DG_state_plot.dump" % (td))
         else:
             raise IOError("results_except_draw.tgz not found in " + td)
-        break
 
     with open(dg_dump_file, "r") as f:
         print "Reading: " + dg_dump_file
