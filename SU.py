@@ -677,3 +677,64 @@ def calc_benchmark_statistics_matrix(react_mat, ct_mat):
     bm_stats["PPV"] = TP / float(TP + FP) if TP + FP != 0 else float('nan')
     print "Benchmark statistics: " + str(bm_stats)
     return bm_stats
+
+
+def get_rnm_structs_dbn(rnmfile, outputdir):
+    """
+    Takes the .rnm output from KineFold and creates associated .dbn files in
+    the output directory. Outputs the names of the output files and respective
+    KineFold free energies in order.
+    """
+    with open(rnmfile, 'r') as f:
+        fpre = re.findall("([^/]+).rnm$", rnmfile)[0]
+        seq = ""
+        seqr = ""
+        length = "0"
+        count = 1
+        files = []
+        energy_path = []
+        for line in f:
+            seq_tmp = re.match("^([ACUG\s\[\]\^]+)\| ([-\d\.]+).*after ([\d\.]+).* (\d+) over", line)
+            h_rep = re.match("^([ \-\d\']+) H\s+Helix numbering$", line)
+            if seq_tmp:
+                seqr = seq_tmp.group(1)
+                energy_path.append(seq_tmp.group(2))
+                seq = re.sub("(\\]|\\[|\^)", ' ', seqr)
+                seq = "".join(seq.split())
+                if length == str(len(seq)):
+                    count += 1
+                else:
+                    count = 1
+                    length = str(len(seq))
+            if h_rep:
+                db = rnm_to_dotbracket(seqr, h_rep.group(1))
+                fname = "_".join([fpre, length, str(count) + ".dbn"])
+                with open(outputdir + "/" + fname, "w") as w:
+                    w.write("> " + fname + "\n")
+                    w.write(seq + "\n")
+                    w.write(db + "\n")
+                files.append(outputdir + "/" + fname)
+        return files, energy_path
+
+
+def rnm_to_dotbracket(seql, h_rep):
+    """
+    Takes the parsed two lines in an .rnm file and creates the associated dot
+    bracket notation.
+    """
+    seql = seql.strip()
+    h_rep = h_rep.strip()
+    seql = re.sub('\^', '][', seql)
+    seql = re.sub("(\\]|\\[)", r' \1 ', seql)
+    helices_seq = re.findall("\\[[\sACUG]+\\]", seql)
+    digit_re = re.compile("\d")
+    left_par_re = re.compile("\'")
+    h_rep = [h for h in h_rep.split(" ") if bool(digit_re.search(h))]
+    for s in range(len(helices_seq)):
+        if bool(left_par_re.search(h_rep[s])):
+            seql = seql.replace(helices_seq[s], ')' * ((len(helices_seq[s])//2) - 1))
+        else:
+            seql = seql.replace(helices_seq[s], '(' * ((len(helices_seq[s])//2) - 1))
+    seql = "".join(seql.split())
+    seql = re.sub("[ACUG]", ".", seql)
+    return seql
