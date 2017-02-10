@@ -2,7 +2,7 @@ require(data.table)
 
 # Make a DG state plot from the DG state .dump file
 #
-# Usage: R < make_DG_state_plot_100x_EQ_Rep_figure.R --no-save <outfile> <Equilibrium refolded DG dump file with 100 repititions> <Cotranscriptional DG dump file with 100 repititions> <DG dump file from KineFold> <title of plot> <smallest length to plot> <largest length to plot>
+# Usage: R < make_DG_state_plot_100x_EQ_Rep_KineFold_figure.R --no-save <outfile> <Equilibrium refolded DG dump file with 100 repititions> <Cotranscriptional DG dump file with 100 repititions> <Directory containing DG dump files from KineFold> <title of plot> <smallest length to plot> <largest length to plot>
 #
 # Author: Angela M Yu, 2017
 # Version: 0.0.1
@@ -17,7 +17,7 @@ print(args)
 outfile <- args[1]
 eq.dumpfile <- args[2]
 co.dumpfiles <- strsplit(args[3], ",")[[1]]
-kf.dumpfile <- args[4]
+kf.dumpfile.dir <- args[4]
 title <- args[5]
 start <- as.numeric(args[6])
 end <- as.numeric(args[7])
@@ -30,12 +30,12 @@ co.col <- c("#8B3E2F5A", "#FF3030AA", "#8B3E2FAA")
 
 eq.data <- read.table(eq.dumpfile, header=TRUE, sep="\t")
 co.data <- read.table(co.dumpfiles[1], header=TRUE, sep="\t")
+co.data <- co.data[order(co.data$nt),]
 for(cdf in co.dumpfiles){
  co.data.next <- read.table(cdf, header=TRUE, sep="\t")
  co.data <- merge(co.data, co.data.next, by=c("nt", 'DG'), all=TRUE)
  co.data[is.na(co.data)] <- 0
 }
-kf.data <- read.table(kf.dumpfile, header=TRUE, sep="\t")
 
 # not necessary to call unique(), but in case of not unique dump file
 unique.data.eq <- unique(eq.data)
@@ -47,6 +47,8 @@ if(length(args) > 5){
  unique.data.co <- unique.data.co[unique.data.co$nt <= end & unique.data.co$nt >= start,]
  unique.data.eq <- unique.data.eq[unique.data.eq$nt <= end & unique.data.eq$nt >= start,]
 }
+unique.data.co <- unique.data.co[order(unique.data.co$nt),]
+unique.data.eq <- unique.data.eq[order(unique.data.eq$nt),]
 
 # set data tables and unique.points
 unique.points.co <- as.data.table(unique.data.co[,c(1,2)])
@@ -62,16 +64,14 @@ title(xlab="RNA Length (nt)", ylab=expression(paste(Delta, " G (kcal/mol)", sep=
 nts <- as.vector(unique(unique.points.co$nt))
 max.dg <- unique.points.co[,.SD[which.max(DG)],by=nt]
 min.dg.co <- unique.points.co[,.SD[which.min(DG)],by=nt]
+print(nts)
+print(c(min.dg.co$DG, rev(max.dg$DG)))
 polygon(c(nts, rev(nts)), c(min.dg.co$DG, rev(max.dg$DG)), col=co.col[1], border=co.col[3], lwd=0.1)
 # Equilibrium refolded data
 nts <- as.vector(unique(unique.points.eq$nt))
 max.dg <- unique.points.eq[,.SD[which.max(DG)],by=nt]
 min.dg.eq <- unique.points.eq[,.SD[which.min(DG)],by=nt]
 polygon(c(nts, rev(nts)), c(min.dg.eq$DG, rev(max.dg$DG)), col=eq.col[1], border=eq.col[3], lwd=0.1)
-
-# plot MFE line
-min.dg <- rbind(min.dg.co, min.dg.eq)[,.SD[which.min(DG)],by=nt]
-lines(min.dg, col="black", lwd=0.6)
 
 # plot R2D2 cotranscriptional pathways
 for(it in 3:ncol(unique.data.co)){
@@ -106,9 +106,18 @@ for(it in 3:ncol(unique.data.eq)){
 }
 
 # plot KineFold folding pathway
-lines(kf.data$nt, kf.data$DG, col="olivedrab", lwd=0.1)
-lines(kf.data$nt, kf.data$KineFold_DG, col="olivedrab1", lwd=0.1)
+kf.dumpfiles <- list.files(kf.dumpfile.dir, pattern="\\.dump$", full.names=TRUE)
+print(kf.dumpfiles)
+for(kf.dumpfile in kf.dumpfiles){
+ kf.data <- read.table(kf.dumpfile, header=TRUE, sep="\t")
 
+ lines(kf.data$nt, kf.data$DG, col="olivedrab1", lwd=0.1)
+ #lines(kf.data$nt, kf.data$KineFold_DG, col="olivedrab1", lwd=0.25)
+}
+
+# plot MFE line
+min.dg <- rbind(min.dg.co, min.dg.eq)[,.SD[which.min(DG)],by=nt]
+lines(min.dg, col="black", lwd=0.6)
 
 dev.off()
 

@@ -679,6 +679,46 @@ def calc_benchmark_statistics_matrix(react_mat, ct_mat):
     return bm_stats
 
 
+def run_KineFold(reqfile):
+    """
+    Calls KineFold with supplied reqfile.
+    """
+    OSU.system_command("kinefold_long_static %s -noprint" % (reqfile))
+
+
+def generate_req_dat_file(fpre, sequence, time=160000, pseudoknots=False, entanglements=False, speed=20, seed=-1):
+    """
+    Generates a .req and .dat file to run KineFold. Must provide file name prefix (fpre) and sequence.
+    Optionally can supply time allowed to fold, allow pseudoknots, allow entanglements,RNA polymerase
+    speed, and seed.
+    """
+    extensions = [".p", ".e", ".rnm", ".rnms", ".rnml", ".rnm2", ".dat"]
+    # generate random seed if neeeded
+    if seed == -1:
+        seed = random.randint(1, 100000000)
+
+    # create .req file
+    with open(fpre + ".req", "w") as f:
+        f.write("%s\t\t# randomseed\n" % (seed))
+        f.write("\n".join(["%s%s" % (fpre, ext) for ext in extensions]) + "\n")
+        f.write("0\t\t# 0=RNA ; 1=DNA\n")
+        f.write("6.3460741\t# helix minimum free energy in kcal/mol: 6.3460741=10kT\n")
+        f.write("10000000\t# NA\n")
+        f.write("%s\t\t# folding time requested in msec\n" % (time))
+        f.write("%s\t\t# pseudoknots   1=yes 0=no\n" % (int(pseudoknots)))
+        f.write("%s\t\t# entanglements 1=yes 0=no\n" % (int(entanglements)))
+        f.write("2 %s\t\t# simulation type: 1=renaturation; 2 20=cotrans. @ 20msec/nt\n" % (speed))
+        f.write("\t\t# add T i j k or F i j k options here\n\n")
+        f.write("%s\n%s.zip\n<SEQNAME>%s\n<BASE>%s\n" % (fpre, fpre, fpre, fpre))
+        f.write("<SEQUENCE>%s\n<ZIPFILE>%s.zip\n" % (sequence, fpre))
+
+    # makes .dat file
+    with open(fpre + ".dat", "w") as f:
+        f.write("< %s\n%s\n" % (fpre, sequence))
+
+    return fpre + ".req"
+
+
 def get_rnm_structs_dbn(rnmfile, outputdir):
     """
     Takes the .rnm output from KineFold and creates associated .dbn files in
@@ -732,9 +772,9 @@ def rnm_to_dotbracket(seql, h_rep):
     h_rep = [h for h in h_rep.split(" ") if bool(digit_re.search(h))]
     for s in range(len(helices_seq)):
         if bool(left_par_re.search(h_rep[s])):
-            seql = seql.replace(helices_seq[s], ')' * ((len(helices_seq[s])//2) - 1))
+            seql = seql.replace(helices_seq[s], ')' * ((len(helices_seq[s])//2) - 1), 1)
         else:
-            seql = seql.replace(helices_seq[s], '(' * ((len(helices_seq[s])//2) - 1))
+            seql = seql.replace(helices_seq[s], '(' * ((len(helices_seq[s])//2) - 1), 1)
     seql = "".join(seql.split())
     seql = re.sub("[ACUG]", ".", seql)
     return seql
