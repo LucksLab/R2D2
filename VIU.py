@@ -69,7 +69,7 @@ def generate_movie(regex, outfile, size="1200x2800"):
         OSU.system_command("ffmpeg -framerate 1 -i " + regex + " -vcodec mpeg4 -b 800k -r 10 -pix_fmt yuv420p " + outfile)
 
 
-def generate_MFE_CoTrans_movie(seq, outdir, seq_start=-1, seq_end=-1, rhos_dir=""):
+def generate_MFE_CoTrans_movie(seq, outdir, seq_start=-1, seq_end=-1, rhos_dir="", SHAPE_direct=False):
     """
     Generate co-transcriptional MFE folding movie.
     Options to start and end at specific lengths, seq_start and seq_end respectively.
@@ -93,18 +93,21 @@ def generate_MFE_CoTrans_movie(seq, outdir, seq_start=-1, seq_end=-1, rhos_dir="
             # read in each rho reactivitiy spectra
             with open(rf, "r") as f:
                 rho = [line.split()[1] for line in f.readlines()]
-                rhos[len(rho)] = rho  # add in rho file here
+                rhos[len(rho)] = (rho, rf)  # add in rho file here
 
     for seqi in range(seq_start+1, seq_end+1):
         varna_num += 1
         if seqi in rhos:
-            rho_varna = "\"" + ";".join(rhos[seqi]+(["-1"]*(seq_end-seqi))) + "\""
+            rho_varna = "\"" + ";".join(rhos[seqi][0]+(["-1"]*(seq_end-seqi))) + "\""
         else:
             rho_varna = "\"" + ";".join(["-1"]*(seq_end)) + "\""
         seqf = outdir + "/seq/" + str(seqi) + ".seq"
         ctf = outdir + "/ct/" + str(seqi) + ".ct"
         NAU.make_seq(seq[seq_start:seqi], seqf)
-        SU.runRNAstructure_fold(seqf, ctf)
+        if SHAPE_direct:
+            SU.runRNAstructure_fold(seqf, ctf, rhos[seqi][1])
+        else:
+            SU.runRNAstructure_fold(seqf, ctf)
         SU.run_ct2dot(ctf, 0, "temp.dbn")
         OSU.system_command("sed '$s/$/&%s/' temp.dbn > temp_ext.dbn " % ("." * (seq_end - seqi)))
         run_VARNA("temp_ext.dbn", outdir + str(varna_num).zfill(zero_padding) + "_structure.png", rho_varna)
