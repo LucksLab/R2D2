@@ -22,7 +22,7 @@ start <- as.numeric(args[5])
 end <- as.numeric(args[6])
 
 # Specify output to a pdf
-pdf(outfile, width=7, height=3)
+pdf(outfile, width=7.007874, height=3)
 
 eq.col <- c("#838B8B5A", "#1DADADAA", "#838B8BAA")
 co.col <- c("#8B3E2F5A", "#FF3030AA", "#8B3E2FAA")

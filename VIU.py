@@ -93,10 +93,9 @@ def generate_MFE_CoTrans_movie(seq, outdir, seq_start=-1, seq_end=-1, rhos_dir="
             # read in each rho reactivitiy spectra
             with open(rf, "r") as f:
                 rho = [line.split()[1] for line in f.readlines()]
-                rhos[len(rho)] = (rho, rf)  # add in rho file here
+                rhos[len(rho)] = [rho, rf]  # add in rho file here
 
     for seqi in range(seq_start+1, seq_end+1):
-        varna_num += 1
         if seqi in rhos:
             rho_varna = "\"" + ";".join(rhos[seqi][0]+(["-1"]*(seq_end-seqi))) + "\""
         else:
@@ -104,12 +103,15 @@ def generate_MFE_CoTrans_movie(seq, outdir, seq_start=-1, seq_end=-1, rhos_dir="
         seqf = outdir + "/seq/" + str(seqi) + ".seq"
         ctf = outdir + "/ct/" + str(seqi) + ".ct"
         NAU.make_seq(seq[seq_start:seqi], seqf)
-        if SHAPE_direct:
+        if SHAPE_direct and seqi in rhos:
             SU.runRNAstructure_fold(seqf, ctf, rhos[seqi][1])
+        elif SHAPE_direct:
+            continue
         else:
             SU.runRNAstructure_fold(seqf, ctf)
         SU.run_ct2dot(ctf, 0, "temp.dbn")
         OSU.system_command("sed '$s/$/&%s/' temp.dbn > temp_ext.dbn " % ("." * (seq_end - seqi)))
+        varna_num += 1
         run_VARNA("temp_ext.dbn", outdir + str(varna_num).zfill(zero_padding) + "_structure.png", rho_varna)
         convert_center_resize(outdir + str(varna_num).zfill(zero_padding) + "_structure.png", "1440x2000")
     OSU.remove_file(outdir + "temp.dbn")

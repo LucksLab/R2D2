@@ -39,8 +39,8 @@ outdir = opts["--outdir"]
 KF_times = int(opts["--KineFold_times"]) if "--KineFold_times" in opts else 0
 seq_name = opts["--seq_name"] if "--seq_name" in opts else "test"
 time = opts["--time"] if "--time" in opts else 160000
-pseudoknots = bool(opts["--pseudoknots"] is True) if "--pseudoknots" in opts else False
-entanglements = bool(opts["--entanglements"] is True) if "--entanglementss" in opts else False
+pseudoknots = bool(opts["--pseudoknots"] == "True") if "--pseudoknots" in opts else False
+entanglements = bool(opts["--entanglements"] == "True") if "--entanglementss" in opts else False
 speed = opts["--speed"] if "--speed" in opts else 20
 sequence = opts["--sequence"] if "--sequence" in opts else ""
 
