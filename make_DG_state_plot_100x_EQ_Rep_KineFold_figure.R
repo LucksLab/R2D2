@@ -31,7 +31,7 @@ co.col <- c("#8B3E2F5A", "#FF3030AA", "#8B3E2FAA")
 eq.data <- read.table(eq.dumpfile, header=TRUE, sep="\t")
 co.data <- read.table(co.dumpfiles[1], header=TRUE, sep="\t")
 co.data <- co.data[order(co.data$nt),]
-for(cdf in co.dumpfiles){
+for(cdf in co.dumpfiles[-1]){
  co.data.next <- read.table(cdf, header=TRUE, sep="\t")
  co.data <- merge(co.data, co.data.next, by=c("nt", 'DG'), all=TRUE)
  co.data[is.na(co.data)] <- 0

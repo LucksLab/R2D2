@@ -29,7 +29,8 @@ co.col <- c("#8B3E2F5A", "#FF3030AA", "#8B3E2FAA")
 
 eq.data <- read.table(eq.dumpfile, header=TRUE, sep="\t")
 co.data <- read.table(co.dumpfiles[1], header=TRUE, sep="\t")
-for(cdf in co.dumpfiles){
+co.data <- co.data[order(co.data$nt),]
+for(cdf in co.dumpfiles[-1]){
  co.data.next <- read.table(cdf, header=TRUE, sep="\t")
  co.data <- merge(co.data, co.data.next, by=c("nt", 'DG'), all=TRUE)
  co.data[is.na(co.data)] <- 0
@@ -39,7 +40,6 @@ for(cdf in co.dumpfiles){
 unique.data.eq <- unique(eq.data)
 unique.data.co <- unique(co.data)
 unique.data.co$nt <- unique.data.co$nt - 14
-
 # reduce to only plot between start and end inclusive
 if(length(args) > 4){
  unique.data.co <- unique.data.co[unique.data.co$nt <= end & unique.data.co$nt >= start,]
