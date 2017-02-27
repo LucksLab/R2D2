@@ -1,8 +1,9 @@
 require(data.table)
+#library("shape")
 
 # Make a DG state plot from the DG state .dump file
 #
-# Usage: R < make_DG_state_plot_100x_EQ_Rep_figure.R --no-save <outfile> <Equilibrium refolded DG dump file with 100 repititions> <Cotranscriptional DG dump file with 100 repititions> <title of plot> <smallest length to plot> <largest length to plot>
+# Usage: R < make_DG_state_plot_100x_EQ_Rep_figure.R --no-save <outfile> <Equilibrium refolded DG dump file with 100 repititions> <Cotranscriptional DG dump file with 100 repititions> <title of plot> <smallest length to plot> <largest length to plot> <Vertical lines x positions>
 #
 # Author: Angela M Yu, 2017
 # Version: 0.0.1
@@ -14,18 +15,19 @@ require(data.table)
 # Parse arguments
 args <- commandArgs(trailingOnly = TRUE)
 print(args)
-outfile = args[1]
-eq.dumpfile = args[2]
-co.dumpfiles = strsplit(args[3], ",")[[1]]
+outfile <- args[1]
+eq.dumpfile <- args[2]
+co.dumpfiles <- strsplit(args[3], ",")[[1]]
 title <- args[4]
 start <- as.numeric(args[5])
 end <- as.numeric(args[6])
+lines.x <- as.numeric(strsplit(args[7], ",")[[1]])
 
 # Specify output to a pdf
 pdf(outfile, width=7.007874, height=3)
 
-eq.col <- c("#838B8B5A", "#1DADADAA", "#838B8BAA")
-co.col <- c("#8B3E2F5A", "#FF3030AA", "#8B3E2FAA")
+eq.col <- c("#ED1C252A", "#ED1C25AA", "#ED1C253A")  #ED1C25
+co.col <- c("#3F55A42A", "#3F55A4AA", "#3F55A43A")  #3F55A4
 
 eq.data <- read.table(eq.dumpfile, header=TRUE, sep="\t")
 co.data <- read.table(co.dumpfiles[1], header=TRUE, sep="\t")
@@ -50,22 +52,23 @@ if(length(args) > 4){
 unique.points.co <- as.data.table(unique.data.co[,c(1,2)])
 unique.points.eq <- as.data.table(unique.data.eq[,c(1,2)])
 unique.points <- rbind(unique.points.co, unique.points.eq)
+head(unique.points)
 
 # plot all points
-plot(unique.points, cex=0.25, main=title, ylab="", xlab="", cex.lab=1, cex.axis=1, cex.main=1, col="#FFFFFF00", xaxs="i", bty='l')
+plot(unique.points, cex=0.25, main=title, ylab="", xlab="", cex.lab=1, cex.axis=1, cex.main=1, col="#FFFFFF00", xaxs="i", bty='l', xlim=c(min(unique.points$nt - 0.2), max(unique.points$nt) + 0.2))
 title(xlab="RNA Length (nt)", ylab=expression(paste(Delta, " G (kcal/mol)", sep="")), line=2)
 
 # shade range of DG's
 # Cotranscriptional data
 nts <- as.vector(unique(unique.points.co$nt))
-max.dg <- unique.points.co[,.SD[which.max(DG)],by=nt]
+max.dg.co <- unique.points.co[,.SD[which.max(DG)],by=nt]
 min.dg.co <- unique.points.co[,.SD[which.min(DG)],by=nt]
-polygon(c(nts, rev(nts)), c(min.dg.co$DG, rev(max.dg$DG)), col=co.col[1], border=co.col[3], lwd=0.1)
+polygon(c(nts, rev(nts)), c(min.dg.co$DG, rev(max.dg.co$DG)), col=co.col[1], border=co.col[3], lwd=0.1)
 # Equilibrium refolded data
 nts <- as.vector(unique(unique.points.eq$nt))
-max.dg <- unique.points.eq[,.SD[which.max(DG)],by=nt]
+max.dg.eq <- unique.points.eq[,.SD[which.max(DG)],by=nt]
 min.dg.eq <- unique.points.eq[,.SD[which.min(DG)],by=nt]
-polygon(c(nts, rev(nts)), c(min.dg.eq$DG, rev(max.dg$DG)), col=eq.col[1], border=eq.col[3], lwd=0.1)
+polygon(c(nts, rev(nts)), c(min.dg.eq$DG, rev(max.dg.eq$DG)), col=eq.col[1], border=eq.col[3], lwd=0.1)
 
 # plot MFE line
 min.dg <- rbind(min.dg.co, min.dg.eq)[,.SD[which.min(DG)],by=nt]
@@ -103,5 +106,8 @@ for(it in 3:ncol(unique.data.eq)){
  }
 }
 
+# place vertical lines at specified lengths
+for(l in lines.x){
+ abline(v=l, lty=2)
+}
 dev.off()
-
