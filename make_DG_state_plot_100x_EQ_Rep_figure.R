@@ -26,8 +26,8 @@ lines.x <- as.numeric(strsplit(args[7], ",")[[1]])
 # Specify output to a pdf
 pdf(outfile, width=7.007874, height=3)
 
-eq.col <- c("#ED1C252A", "#ED1C25AA", "#ED1C253A")  #ED1C25
-co.col <- c("#3F55A42A", "#3F55A4AA", "#3F55A43A")  #3F55A4
+co.col <- c("#ED1C252A", "#ED1C25AA", "#ED1C253A")  #ED1C25
+eq.col <- c("#3F55A42A", "#3F55A4AA", "#3F55A43A")  #3F55A4
 
 eq.data <- read.table(eq.dumpfile, header=TRUE, sep="\t")
 co.data <- read.table(co.dumpfiles[1], header=TRUE, sep="\t")
