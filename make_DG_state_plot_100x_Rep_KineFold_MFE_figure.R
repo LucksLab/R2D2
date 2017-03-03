@@ -24,7 +24,8 @@ start <- as.numeric(args[7])
 end <- as.numeric(args[8])
 
 # Specify output to a pdf
-pdf(outfile, width=7.007874, height=3)
+pdf(outfile, width=7, height=3)
+par(mar=c(3, 3, 1.5, 0.25)+0.1)
 
 co.col <- c("#ED1C252A", "#ED1C25AA", "#ED1C253A")
 
@@ -81,22 +82,21 @@ kf.dumpfiles <- list.files(kf.dumpfile.dir, pattern="\\.dump$", full.names=TRUE)
 for(kf.dumpfile in kf.dumpfiles){
  kf.data <- read.table(kf.dumpfile, header=TRUE, sep="\t")
 
- lines(kf.data$nt, kf.data$DG, col="olivedrab1", lwd=0.1)
- #lines(kf.data$nt, kf.data$KineFold_DG, col="olivedrab1", lwd=0.25)
+ lines(kf.data$nt, kf.data$DG, col="paleturquoise3", lwd=0.1)
 }
 
 # plot EQ SHAPE directed MFE line
 EQ.MFE.dumpfiles <- list.files(EQ.MFE.dumpfile.dir, pattern="\\.dump$", full.names=TRUE)
 for(EQ.MFE.dumpfile in EQ.MFE.dumpfiles){
  EQ.MFE.data <- read.table(EQ.MFE.dumpfile, header=TRUE, sep="\t")
- lines(EQ.MFE.data$nt, EQ.MFE.data$DG, col="purple", lwd=0.6)
+ #lines(EQ.MFE.data$nt, EQ.MFE.data$DG, col="navy", lwd=0.6)
 }
 
 # plot SHAPE directed MFE line(s)
 MFE.dumpfiles <- list.files(MFE.dumpfile.dir, pattern="\\.dump$", full.names=TRUE)
 for(MFE.dumpfile in MFE.dumpfiles){
  MFE.data <- read.table(MFE.dumpfile, header=TRUE, sep="\t")
- lines(MFE.data$nt, MFE.data$DG, col="chocolate1", lwd=0.6)
+ lines(MFE.data$nt, MFE.data$DG, col="purple", lwd=0.6)
 }
 
 
