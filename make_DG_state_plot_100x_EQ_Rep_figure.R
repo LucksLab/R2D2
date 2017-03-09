@@ -26,8 +26,10 @@ lines.x <- as.numeric(strsplit(args[7], ",")[[1]])
 # Specify output to a pdf
 pdf(outfile, width=7.007874, height=3)
 
-co.col <- c("#ED1C252A", "#ED1C25AA", "#ED1C253A")  #ED1C25
-eq.col <- c("#3F55A42A", "#3F55A4AA", "#3F55A43A")  #3F55A4
+#rgb(t(col2rgb("turquoise3")), maxColorValue=255)
+back.col <- c("#7F7F7F2A", "#7F7F7F3A") #gray50 w/ transparancy -> gray 234/255
+co.col <- c("#4E2A842A", "#4E2A84AA", "#4E2A843A")  #ED1C25
+eq.col <- c("#00CED12A", "#00CED1AA", "#00CED13A") #darkturquiose
 
 eq.data <- read.table(eq.dumpfile, header=TRUE, sep="\t")
 co.data <- read.table(co.dumpfiles[1], header=TRUE, sep="\t")
@@ -59,36 +61,21 @@ plot(unique.points, cex=0.25, main=title, ylab="", xlab="", cex.lab=1, cex.axis=
 title(xlab="RNA Length (nt)", ylab=expression(paste(Delta, " G (kcal/mol)", sep="")), line=2)
 
 # shade range of DG's
-# Cotranscriptional data
-nts <- as.vector(unique(unique.points.co$nt))
-max.dg.co <- unique.points.co[,.SD[which.max(DG)],by=nt]
-min.dg.co <- unique.points.co[,.SD[which.min(DG)],by=nt]
-polygon(c(nts, rev(nts)), c(min.dg.co$DG, rev(max.dg.co$DG)), col=co.col[1], border=co.col[3], lwd=0.1)
 # Equilibrium refolded data
 nts <- as.vector(unique(unique.points.eq$nt))
 max.dg.eq <- unique.points.eq[,.SD[which.max(DG)],by=nt]
 min.dg.eq <- unique.points.eq[,.SD[which.min(DG)],by=nt]
-polygon(c(nts, rev(nts)), c(min.dg.eq$DG, rev(max.dg.eq$DG)), col=eq.col[1], border=eq.col[3], lwd=0.1)
+# Cotranscriptional data
+nts <- as.vector(unique(unique.points.co$nt))
+max.dg.co <- unique.points.co[,.SD[which.max(DG)],by=nt]
+min.dg.co <- unique.points.co[,.SD[which.min(DG)],by=nt]
+# Merge both sets and shade
+min.dg <- rbind(min.dg.co, min.dg.eq)[,.SD[which.min(DG)],by=nt]
+max.dg <- rbind(max.dg.co, max.dg.eq)[,.SD[which.max(DG)],by=nt]
+polygon(c(nts, rev(nts)), c(min.dg$DG, rev(max.dg$DG)), col=back.col[1], border=back.col[2], lwd=0.1)
 
 # plot MFE line
-min.dg <- rbind(min.dg.co, min.dg.eq)[,.SD[which.min(DG)],by=nt]
 lines(min.dg, col="black", lwd=0.6)
-
-# plot R2D2 cotranscriptional pathways
-for(it in 3:ncol(unique.data.co)){
- unique.data.co.it <- unique.data.co[which(unique.data.co[,it] == 1),]
- nts <- unique(unique.data.co.it[,1])
-
- for(i in 2:length(nts)){
-  if(nts[i] - nts[i-1] == 1){
-   for(prev in which(unique.data.co.it[,1] == nts[i-1])){
-    for(curr in which(unique.data.co.it[,1] == nts[i])){
-     lines(c(nts[i-1], nts[i]), c(unique.data.co.it[prev,2], unique.data.co.it[curr,2]), col=co.col[2], lwd=0.1)
-    }
-   }
-  }
- }
-} 
 
 # plot R2D2 equilibrium refolded pathways
 for(it in 3:ncol(unique.data.eq)){
@@ -105,6 +92,22 @@ for(it in 3:ncol(unique.data.eq)){
   }
  }
 }
+
+# plot R2D2 cotranscriptional pathways
+for(it in 3:ncol(unique.data.co)){
+ unique.data.co.it <- unique.data.co[which(unique.data.co[,it] == 1),]
+ nts <- unique(unique.data.co.it[,1])
+
+ for(i in 2:length(nts)){
+  if(nts[i] - nts[i-1] == 1){
+   for(prev in which(unique.data.co.it[,1] == nts[i-1])){
+    for(curr in which(unique.data.co.it[,1] == nts[i])){
+     lines(c(nts[i-1], nts[i]), c(unique.data.co.it[prev,2], unique.data.co.it[curr,2]), col=co.col[2], lwd=0.1)
+    }
+   }
+  }
+ }
+} 
 
 # place vertical lines at specified lengths
 for(l in lines.x){
