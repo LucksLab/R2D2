@@ -59,17 +59,17 @@ for react_f in reactivities_files:
         print "Currently sampling %s each"%(e)
 
         # Vanilla Sampling
-        structs, structs_labels = SU.RNAstructure_sample(output_file_prefix, e, output_dir, label="noshape", num_proc=1)
+        structs, structs_labels = SU.RNAstructure_sample(output_file_prefix, e, output_dir, label="noshape", num_proc=1, wn_tag=file_name)
         sampled_structs.update(structs_labels)
 
         # Sampling with SHAPE constraints
-        structs, structs_labels = SU.RNAstructure_sample(output_file_prefix, e, output_dir, shapefile=output_file_prefix+".rho", label="shape", num_proc=1)
+        structs, structs_labels = SU.RNAstructure_sample(output_file_prefix, e, output_dir, shapefile=output_file_prefix+".rho", label="shape", num_proc=1, wn_tag=file_name)
         sampled_structs.update(structs_labels)
 
         # Sampling with hard constraints
         XB = SU.get_indices_rho_gt_c(rho, 3.5, one_index=True)  # RNAstructure is 1-indexed
         SU.make_constraint_file(output_file_prefix+".con", [], XB, [], [], [], [], [], [])
-        structs, structs_labels = SU.RNAstructure_sample(output_file_prefix, e, output_dir, constraintfile=output_file_prefix+".con", label="constrained_"+str(3.5), num_proc=1)
+        structs, structs_labels = SU.RNAstructure_sample(output_file_prefix, e, output_dir, constraintfile=output_file_prefix+".con", label="constrained_"+str(3.5), num_proc=1, wn_tag=file_name)
         sampled_structs.update(structs_labels)
         sampled_structs_merged = SU.merge_labels(sampled_structs, to_string=False)
 
@@ -99,7 +99,7 @@ for react_f in reactivities_files:
         f.write("\t".join(shape_struct_nums[output_file_prefix]) + "\n")
         f.write(file_name + "_constrained_unique_structs\t")
         f.write("\t".join(constrained_struct_nums[output_file_prefix]) + "\n")
-
+    """
     plt.plot([x*3 for x in sample_sizes], unique_struct_nums[output_file_prefix]) #, marker='o')
     plt.xlabel("Sample size")
     plt.ylabel("Number of unique structures")
@@ -113,3 +113,4 @@ for react_f in reactivities_files:
     plt.ylabel("Min distance")
     plt.title("Sampling RNA structures")
     plt.savefig(output_dir+"/"+outfile+'_distances.png')
+    """
