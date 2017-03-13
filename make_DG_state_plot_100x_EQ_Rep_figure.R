@@ -1,4 +1,5 @@
 require(data.table)
+library(Hmisc)
 #library("shape")
 
 # Make a DG state plot from the DG state .dump file
@@ -58,6 +59,7 @@ head(unique.points)
 
 # plot all points
 plot(unique.points, cex=0.25, main=title, ylab="", xlab="", cex.lab=1, cex.axis=1, cex.main=1, col="#FFFFFF00", xaxs="i", bty='l', xlim=c(min(unique.points$nt - 0.2), max(unique.points$nt) + 0.2))
+minor.tick(nx=2, ny=2, tick.ratio=0.5)
 title(xlab="RNA Length (nt)", ylab=expression(paste(Delta, " G (kcal/mol)", sep="")), line=2)
 
 # shade range of DG's
