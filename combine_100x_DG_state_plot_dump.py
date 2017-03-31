@@ -26,15 +26,20 @@ from collections import defaultdict
 
 # setup environment variables
 LucksLabUtils_config.config("Quest_R2D2")
-opts = OSU.getopts("o:", ["3_times_dirs=", "50_times_dir=", "47_times_dir=", "file_prefix="])
+opts = OSU.getopts("o:", ["3_times_dirs=", "50_times_dir=", "47_times_dir=", "100_times_dir=", "file_prefix="])
 print opts
 
 output_dir = OSU.create_directory(opts['-o'])
 file_prefix = opts["--file_prefix"]
-times_dirs = opts["--3_times_dirs"].split(",")
 
-times_dirs += ["%s/%s%s/" % (opts["--50_times_dir"], file_prefix, i) for i in range(1, 51)]
-times_dirs += ["%s/%s%s/" % (opts["--47_times_dir"], file_prefix, i) for i in range(1, 48)]
+if "--100_times_dir" in opts:
+    times_dirs = ["%s/%s%s/" % (opts["--100_times_dir"], file_prefix, i) for i in range(1, 101)]
+elif "--3_times_dirs" in opts and "--50_times_dir" in opts and "--47_times_dir" in opts:
+    times_dirs = opts["--3_times_dirs"].split(",")
+    times_dirs += ["%s/%s%s/" % (opts["--50_times_dir"], file_prefix, i) for i in range(1, 51)]
+    times_dirs += ["%s/%s%s/" % (opts["--47_times_dir"], file_prefix, i) for i in range(1, 48)]
+else:
+    raise NotImplementedError("Needs --100_times_dir option or --3_times_dirs, --50_times_dir, and --47_times_dir")
 
 combined = defaultdict(set)
 
