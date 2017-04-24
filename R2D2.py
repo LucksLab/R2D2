@@ -174,7 +174,8 @@ class R2D2:
             for i in range(len(args_pool)):
                 PCSU.calculate_function_helper(args_pool[i])
         else:
-            PCSU.run_output_multiprocessing_pool(PCSU.calculate_function_helper, args_pool, self.p)
+            PCSU.generate_DG_output(self, 1, sorted_lengths[-1])  # moved this outside of multiprocessing because Quest has issues running it in a pool
+            PCSU.run_output_multiprocessing_pool(PCSU.calculate_function_helper, args_pool[1:], self.p)
 
         if not OSU.check_file_exists(self.output_dir+"/DG_state_plot.pdf"):  # Weird error on quest that it will ignore this command if sample size is very large
             PCSU.generate_DG_output(self, 1, sorted_lengths[-1])
