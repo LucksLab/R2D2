@@ -1,4 +1,5 @@
 require(data.table)
+library(Hmisc)
 
 # Make a DG state plot from the DG state .dump file
 #
@@ -25,9 +26,10 @@ end <- as.numeric(args[8])
 
 # Specify output to a pdf
 pdf(outfile, width=7, height=3)
-par(mar=c(3, 3, 1.5, 0.25)+0.1)
+#par(mar=c(3, 3, 1.5, 0.25)+0.1)
 
-co.col <- c("#ED1C252A", "#ED1C25AA", "#ED1C253A")
+back.col <- c("#7F7F7F2A", "#7F7F7F3A") #gray50 w/ transparancy -> gray 234/255
+co.col <- c("#4E2A842A", "#4E2A84AA", "#4E2A843A")  #ED1C25
 
 co.data <- read.table(co.dumpfiles[1], header=TRUE, sep="\t")
 co.data <- co.data[order(co.data$nt),]
@@ -52,6 +54,7 @@ unique.points.co <- as.data.table(unique.data.co[,c(1,2)])
 
 # plot all points
 plot(unique.points.co, cex=0.25, main=title, ylab="", xlab="", cex.lab=1, cex.axis=1, cex.main=1, col="#FFFFFF00", xaxs="i", bty='l', xlim=c(min(unique.points.co$nt - 0.2), max(unique.points.co$nt) + 0.2))
+minor.tick(nx=2, ny=2, tick.ratio=0.5)
 title(xlab="RNA Length (nt)", ylab=expression(paste(Delta, " G (kcal/mol)", sep="")), line=2)
 
 # shade range of DG's
@@ -59,7 +62,7 @@ title(xlab="RNA Length (nt)", ylab=expression(paste(Delta, " G (kcal/mol)", sep=
 nts <- as.vector(unique(unique.points.co$nt))
 max.dg <- unique.points.co[,.SD[which.max(DG)],by=nt]
 min.dg.co <- unique.points.co[,.SD[which.min(DG)],by=nt]
-polygon(c(nts, rev(nts)), c(min.dg.co$DG, rev(max.dg$DG)), col=co.col[1], border=co.col[3], lwd=0.1)
+polygon(c(nts, rev(nts)), c(min.dg.co$DG, rev(max.dg$DG)), col=back.col[1], border=back.col[2], lwd=0.1)
 
 # plot R2D2 cotranscriptional pathways
 for(it in 3:ncol(unique.data.co)){
@@ -82,7 +85,7 @@ kf.dumpfiles <- list.files(kf.dumpfile.dir, pattern="\\.dump$", full.names=TRUE)
 for(kf.dumpfile in kf.dumpfiles){
  kf.data <- read.table(kf.dumpfile, header=TRUE, sep="\t")
 
- lines(kf.data$nt, kf.data$DG, col="paleturquoise3", lwd=0.1)
+ lines(kf.data$nt, kf.data$DG, col="red", lwd=0.1)
 }
 
 # plot EQ SHAPE directed MFE line
@@ -96,7 +99,7 @@ for(EQ.MFE.dumpfile in EQ.MFE.dumpfiles){
 MFE.dumpfiles <- list.files(MFE.dumpfile.dir, pattern="\\.dump$", full.names=TRUE)
 for(MFE.dumpfile in MFE.dumpfiles){
  MFE.data <- read.table(MFE.dumpfile, header=TRUE, sep="\t")
- lines(MFE.data$nt, MFE.data$DG, col="purple", lwd=0.6)
+ lines(MFE.data$nt, MFE.data$DG, col="darkslategray", lwd=0.6)
 }
 
 
