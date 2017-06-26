@@ -48,7 +48,7 @@ for count, td in enumerate(times_dirs):
     if not OSU.check_file_exists(dg_dump_file):
         if OSU.check_file_exists(td + "results_except_draw.tgz"):
             print td + "results_except_draw.tgz: unpacking DG_state_plot.dump"
-            OSU.system_command("tar -zxvf %sresults_except_draw.tgz %s/DG_state_plot.dump" % (td, td))
+            OSU.system_command("tar -zxvf %sresults_except_draw.tgz -C %s ./DG_state_plot.dump" % (td, td))
         else:
             raise IOError("results_except_draw.tgz not found in " + td)
 
