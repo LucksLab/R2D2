@@ -56,6 +56,7 @@ for k, v in reactivities.iteritems():
     # renormalize rhos based on matching regions
     react_rhos = SU.recalc_rhos(react_rhos, ind_of_match, end_of_match)
 
+    # SHAPE folding
     reactivities[k][0] = react_rhos
     reactivities[k][1] = react_seq[ind_of_match:end_of_match]
     SU.rhos_list_to_file(react_rhos, reactivities[k][2]+".rho")
@@ -65,4 +66,12 @@ for k, v in reactivities.iteritems():
     OSU.system_command("convert %s.ps %s.jpg" % (reactivities[k][2], reactivities[k][2]))
     with open(reactivities[k][2]+".stats", "w") as f:
         react_mat = SU.ct_struct_to_binary_mat(SU.get_ct_structs(reactivities[k][2]+".ct"))[0]
+        f.write(str(SU.calc_benchmark_statistics_matrix(react_mat, crystals[ck][2])))
+
+    # no SHAPE folding
+    SU.runRNAstructure_fold(seqfile, reactivities[k][2]+"_noshape.ct", p=num_proc, shape_intercept=shape_intercept, shape_slope=shape_slope)
+    SU.runRNAstructure_CircleCompare(reactivities[k][2]+"_noshape.ct", crystals[ck][3], reactivities[k][2]+"_noshape.ps")
+    OSU.system_command("convert %s_noshape.ps %s_noshape.jpg" % (reactivities[k][2], reactivities[k][2]))
+    with open(reactivities[k][2]+"_noshape.stats", "w") as f:
+        react_mat = SU.ct_struct_to_binary_mat(SU.get_ct_structs(reactivities[k][2]+"_noshape.ct"))[0]
         f.write(str(SU.calc_benchmark_statistics_matrix(react_mat, crystals[ck][2])))
