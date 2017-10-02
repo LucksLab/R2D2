@@ -4,7 +4,7 @@ library(Hmisc)
 
 # Make a DG state plot from the DG state .dump file
 #
-# Usage: R < make_DG_state_plot_100x_EQ_Rep_figure.R --no-save <outfile> <Equilibrium refolded DG dump file with 100 repititions> <Cotranscriptional DG dump file with 100 repititions> <title of plot> <smallest length to plot> <largest length to plot> <Vertical lines x positions>
+# Usage: R < make_DG_state_plot_100x_EQ_Rep_figure.R --no-save <outfile> <Equilibrium refolded DG dump file with 100 repititions> <Cotranscriptional DG dump file with 100 repititions> <title of plot> <smallest length to plot> <largest length to plot> <Vertical lines x positions> <Equilibrium consensus DG dump file> <Cotranscriptional consensus DG dump file>
 #
 # Author: Angela M Yu, 2017
 # Version: 0.0.1
@@ -20,19 +20,26 @@ outfile <- args[1]
 eq.dumpfile <- args[2]
 co.dumpfiles <- strsplit(args[3], ",")[[1]]
 title <- args[4]
-start <- as.numeric(args[5])
-end <- as.numeric(args[6])
-lines.x <- as.numeric(strsplit(args[7], ",")[[1]])
+if(length(args) > 4){
+ start <- as.numeric(args[5])
+ end <- as.numeric(args[6])
+}
+if(length(args) > 6){
+ lines.x <- as.numeric(strsplit(args[7], ",")[[1]])
+} else { lines.x <- c() }
+if(length(args) > 7){
+ eq.consensus.dumpfile <- args[8]
+ co.consensus.dumpfile <- args[9]
+}
 
 # Specify output to a pdf
 pdf(outfile, width=7.007874, height=3)
 
 #rgb(t(col2rgb("turquoise3")), maxColorValue=255)
 back.col <- c("#7F7F7F2A", "#7F7F7F3A") #gray50 w/ transparancy -> gray 234/255
-co.col <- c("#4E2A842A", "#4E2A84AA", "#4E2A843A")  #ED1C25
-eq.col <- c("#00CED12A", "#00CED1AA", "#00CED13A") #darkturquiose
+co.col <- c("#4E2A842A", "#4E2A84AA", "#4E2A843A", "red")  #ED1C25
+eq.col <- c("#00CED12A", "#00CED1AA", "#00CED13A", "blue") #darkturquiose
 
-eq.data <- read.table(eq.dumpfile, header=TRUE, sep="\t")
 co.data <- read.table(co.dumpfiles[1], header=TRUE, sep="\t")
 co.data <- co.data[order(co.data$nt),]
 for(cdf in co.dumpfiles[-1]){
@@ -40,6 +47,9 @@ for(cdf in co.dumpfiles[-1]){
  co.data <- merge(co.data, co.data.next, by=c("nt", 'DG'), all=TRUE)
  co.data[is.na(co.data)] <- 0
 }
+if(eq.dumpfile != ""){
+ eq.data <- read.table(eq.dumpfile, header=TRUE, sep="\t")
+} else { eq.data <- co.data[c(1,2),] }
 
 # not necessary to call unique(), but in case of not unique dump file
 unique.data.eq <- unique(eq.data)
@@ -79,37 +89,43 @@ polygon(c(nts, rev(nts)), c(min.dg$DG, rev(max.dg$DG)), col=back.col[1], border=
 # plot MFE line
 lines(min.dg, col="black", lwd=0.6)
 
-# plot R2D2 equilibrium refolded pathways
-for(it in 3:ncol(unique.data.eq)){
- unique.data.eq.it <- unique.data.eq[which(unique.data.eq[,it] == 1),]
- nts <- unique(unique.data.eq[,1])
-
+# function for plotting lines
+DG_line_plotting <- function(DG.data, color, line_width){
+ nts <- unique(DG.data[,1])
  for(i in 2:length(nts)){
   if(nts[i] - nts[i-1] == 1){
-   for(prev in which(unique.data.eq.it[,1] == nts[i-1])){
-    for(curr in which(unique.data.eq.it[,1] == nts[i])){
-     lines(c(nts[i-1], nts[i]), c(unique.data.eq.it[prev,2], unique.data.eq.it[curr,2]), col=eq.col[2], lwd=0.1)
+   for(prev in which(DG.data[,1] == nts[i-1])){
+    for(curr in which(DG.data[,1] == nts[i])){
+     lines(c(nts[i-1], nts[i]), c(DG.data[prev,2], DG.data[curr,2]), col=color, lwd=line_width)
     }
    }
   }
  }
 }
 
+if(eq.dumpfile != ""){
+ # plot R2D2 equilibrium refolded pathways
+ for(it in 3:ncol(unique.data.eq)){
+  unique.data.eq.it <- unique.data.eq[which(unique.data.eq[,it] == 1),]
+  DG_line_plotting(unique.data.eq.it, eq.col[2], 0.1)
+ }
+}
+
 # plot R2D2 cotranscriptional pathways
 for(it in 3:ncol(unique.data.co)){
  unique.data.co.it <- unique.data.co[which(unique.data.co[,it] == 1),]
- nts <- unique(unique.data.co.it[,1])
-
- for(i in 2:length(nts)){
-  if(nts[i] - nts[i-1] == 1){
-   for(prev in which(unique.data.co.it[,1] == nts[i-1])){
-    for(curr in which(unique.data.co.it[,1] == nts[i])){
-     lines(c(nts[i-1], nts[i]), c(unique.data.co.it[prev,2], unique.data.co.it[curr,2]), col=co.col[2], lwd=0.1)
-    }
-   }
-  }
- }
+ DG_line_plotting(unique.data.co.it, co.col[2], 0.1)
 } 
+
+if(length(args) > 7){
+ # plot consensus R2D2 equilibrium refolded pathway
+ eq.consensus.data <- read.table(eq.consensus.dumpfile, header=TRUE, sep="\t")
+ DG_line_plotting(eq.consensus.data, eq.col[4], 0.6)
+
+ # plot consensus R2D2 consensus refolded pathway
+ co.consensus.data <- read.table(co.consensus.dumpfile, header=TRUE, sep="\t")
+ DG_line_plotting(co.consensus.data, co.col[4], 0.6)
+}
 
 # place vertical lines at specified lengths
 for(l in lines.x){
