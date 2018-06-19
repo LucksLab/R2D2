@@ -432,7 +432,7 @@ def ct_list_to_file(ct, seq, filename):
         f.write("\n".join(["\t".join(l) for l in lines]) + "\n")
 
 
-def cts_to_file(cts, seq, filename):
+def cts_to_file(cts, seq, filename, shorten_name=False):
     """
     Take multiple ct's in list form and makes one .ct file. The output will not
     be formatted like RNAstructure's output, but will be properly interpreted.
@@ -440,7 +440,10 @@ def cts_to_file(cts, seq, filename):
     open(filename, 'w').close()
     for i in range(len(cts)):  # loop through each ct
         ct = cts[i]
-        header = "%s  %s_%s" % (str(len(ct)), filename, str(i))
+        if shorten_name:
+            header = "%s  %s_%s" % (str(len(ct)), re.findall("([^/]+)$", filename)[0], str(i))
+        else:
+            header = "%s  %s_%s" % (str(len(ct)), filename, str(i))
         ranges = [str(r) for r in range(len(ct)+2)]
         lines = zip(ranges[1:-1], seq, ranges[:-2], ranges[2:], ct, ranges[1:-1])
         with open(filename, 'a') as f:
@@ -483,20 +486,35 @@ def get_free_energy_efn2(efn2file):
     return energy
 
 
-def get_ct_structs(ctfile):
+def get_reactivity_from_file(reactivity_file):
+    """ Opens reactivity file and returns reactivities in a list """
+    with open(reactivity_file, 'r') as f:
+        return [float(line.split()[1]) for line in f]
+
+
+def get_ct_structs(ctfile, return_seq=False):
     """ Returns list of structures in a ct file in nt pairing format """
     with open(ctfile, 'r') as ct:
         structs = []
         stcurr = []
+        seqs = []
+        seqscurr = []
         for line in ct:
             vars = re.split('\s+', line.strip())
             if len(vars) == 6 and "ENERGY" not in vars:
                 stcurr.append(vars[4])
+                seqscurr.append(vars[1])
             elif len(stcurr) > 0:
                 structs.append(stcurr)
                 stcurr = []
+                seqs.append(seqscurr)
+                seqscurr = []
         structs.append(stcurr)  # last structure found not handled in loop
-        return structs
+        seqs.append(seqscurr)  # last sequence found not handled in loop
+        if return_seq:
+            return structs, seqs
+        else:
+            return structs
 
 
 def ct_file_to_struct_file(ctfile, outfile):
@@ -551,7 +569,7 @@ def ct_struct_to_binary_vec(ct):
     """
     if isinstance(ct[0], int) or isinstance(ct[0], str):
         return [1 if int(a) >= 1 else 0 for a in ct]
-    elif isinstance(ct[0], list):
+    elif isinstance(ct[0], list) or isinstance(ct[0], tuple):
         return [[1 if int(c) >= 1 else 0 for c in ctl] for ctl in ct]
 
 

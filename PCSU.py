@@ -154,35 +154,39 @@ def run_cotrans_length(file_l, output_dir, ct_dir, pickle_dir, adapterseq, endcu
     return length_key, file_data_length_key, struct_distances, len(file_data_length_key["min_dist_indices"]), rho_full, rho
 
 
-def generate_DG_output(cotrans, start=-1, end=-1):
+def generate_DG_output(cotrans, start=-1, end=-1, output_dir=None):
     """
     Generate DG state plots and .dump file
     """
+    if output_dir is None:
+        output_dir = cotrans.output_dir
+    if hasattr(cotrans, "file_data"):
+        cotrans = cotrans.file_data
     if start == -1:
-        start = sorted(cotrans.file_data)[0]
+        start = sorted(cotrans)[0]
     if end == -1:
-        end = sorted(cotrans.file_data)[-1]
+        end = sorted(cotrans)[-1]
     print "generate_DG_output: " + str(start) + " " + str(end)
-    with open(cotrans.output_dir + "/DG_state_plot.dump", 'w') as dump:
+    with open(output_dir + "/DG_state_plot.dump", 'w') as dump:
         dump.write("nt\tDG\tmfe_flag\tbest_flag\tdistance\trc_flag\n")
-        for length in sorted(cotrans.file_data):
-            DG = cotrans.file_data[length]["free_energies"]
+        for length in sorted(cotrans):
+            DG = cotrans[length]["free_energies"]
             min_DG = min(DG)
-            best = cotrans.file_data[length]["min_dist_indices"]  # list of struct_num of min_distance
+            best = cotrans[length]["min_dist_indices"]  # list of struct_num of min_distance
 
             line = ["\t".join([str(length),  # nt
                                str(dg),  # DG
                                str(int(min_DG == dg)),  # mfe_flag
                                str(int(c in best)),  # best_flag
-                               str(cotrans.file_data[length]["distances"][c]),  # distance
-                               str(cotrans.file_data[length]["rc_flag"])])  # rc_flag
+                               str(cotrans[length]["distances"][c]),  # distance
+                               str(cotrans[length]["rc_flag"])])  # rc_flag
                     for dg, c in zip(DG, range(len(DG)))]
 
             dump.write("\n".join(line))
             dump.write("\n")
 
-    print "R < make_DG_state_plot.R --no-save --args %s/DG_state_plot.pdf %s/DG_state_plot.dump %s %s" % (cotrans.output_dir, cotrans.output_dir, start, end)
-    OSU.system_command("R < make_DG_state_plot.R --no-save --args %s/DG_state_plot.pdf %s/DG_state_plot.dump %s %s" % (cotrans.output_dir, cotrans.output_dir, start, end))
+    print "R < make_DG_state_plot.R --no-save --args %s/DG_state_plot.pdf %s/DG_state_plot.dump %s %s" % (output_dir, output_dir, start, end)
+    OSU.system_command("R < make_DG_state_plot.R --no-save --args %s/DG_state_plot.pdf %s/DG_state_plot.dump %s %s" % (output_dir, output_dir, start, end))
     return
 
 
