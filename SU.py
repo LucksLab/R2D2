@@ -85,7 +85,8 @@ def runRNAstructure_efn2(ctfile, energyfile, parallel=False):
     if parallel:
         cmd = 'efn2-smp %s %s > /dev/null' % (ctfile, energyfile)
     else:
-        cmd = 'efn2 %s %s > /dev/null' % (ctfile, energyfile)
+        cmd = 'efn2 %s %s ' % (ctfile, energyfile)
+    print cmd
     os.system(cmd)
 
 
@@ -475,9 +476,11 @@ def make_constraint_file(confile, XA, XB, XC, XD1, XD2, XE, XF1, XF2):
         f.write("\n".join(XF1_XF2) + "\n")
 
 
-def get_free_energy_efn2(efn2file):
+def get_free_energy_efn2(efn2file, ctfile=None):
     """ Returns all free energies from a ct file"""
     energy = []
+    if ctfile is not None and not OSU.check_file_exists(efn2file):
+        runRNAstructure_efn2(ctfile, efn2file)
     with open(efn2file, 'r') as f:
         for line in f:
             m = re.search("Energy = (.*)$", line)

@@ -31,7 +31,9 @@ OSU.system_command("echo $DATAPATH")
 opts = OSU.getopts("", ["100_repititions_prefix=", "out_dir=", "num_prev=", "scaling_func=", "weight_paired=", "rep_nums="])
 print opts
 repititions_prefix = opts["--100_repititions_prefix"]
-out_dir = OSU.create_directory(opts["--out_dir"] + "/")
+out_dir = OSU.create_directory(opts["--out_dir"])
+if out_dir[-1] != "/":
+    out_dir += "/"
 num_prev = int(opts["--num_prev"])
 scaling_func = opts["--scaling_func"]
 weight_paired = float(opts["--weight_paired"])
@@ -86,7 +88,7 @@ for li in range(len(lengths)):
     # calculate free energies
     SU.cts_to_file(curr_structs, sequences[curr_length], ct_dir+file_prefixes[curr_length]+"_unique.ct", shorten_name=True)
     SU.runRNAstructure_efn2(ct_dir+file_prefixes[curr_length]+"_unique.ct", efn2_dir + file_prefixes[curr_length] + ".efn2")
-    free_energies = SU.get_free_energy_efn2(efn2_dir+ file_prefixes[curr_length] + ".efn2")
+    free_energies = SU.get_free_energy_efn2(efn2_dir+ file_prefixes[curr_length] + ".efn2", ct_dir+file_prefixes[curr_length]+"_unique.ct")
     file_data_length_key["free_energies"] = free_energies
     del free_energies
     # calculate distances
