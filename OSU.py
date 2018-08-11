@@ -172,6 +172,11 @@ def check_file_exists(filename):
     return os.path.isfile(filename)
 
 
+def check_dir_exists(dirname):
+    """ Checks if directory exists """
+    return os.path.isdir(dirname)
+
+
 def get_dirname(filepath):
     """ Get directory from a file's path """
     return os.path.dirname(filepath)
