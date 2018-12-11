@@ -719,11 +719,13 @@ def generate_req_dat_file(fpre, sequence, time=160000, pseudoknots=False, entang
     return fpre + ".req"
 
 
-def get_rnm_structs_dbn(rnmfile, outputdir):
+def get_rnm_structs_dbn(rnmfile, outputdir, return_time=False, total_time=-1):
     """
     Takes the .rnm output from KineFold and creates associated .dbn files in
     the output directory. Outputs the names of the output files and respective
     KineFold free energies in order.
+    If return_time is set, then it will return the time spent in each
+    structure in ms. total_time must also be set in ms, ex. 40000 for 40 sec. 
     """
     with open(rnmfile, 'r') as f:
         fpre = re.findall("([^/]+).rnm$", rnmfile)[0]
@@ -733,6 +735,10 @@ def get_rnm_structs_dbn(rnmfile, outputdir):
         count = 1
         files = []
         energy_path = []
+        if return_time:
+            # KineFold seems to start at a longer length than 0 and from ssRNA
+            prev_time = -1
+            time_spent = []
         for line in f:
             seq_tmp = re.match("^([ACUG\s\[\]\^]+)\| ([-\d\.]+).*after ([\d\.]+).* (\d+) over", line)
             h_rep = re.match("^([ \-\d\']+) H\s+Helix numbering$", line)
@@ -746,6 +752,11 @@ def get_rnm_structs_dbn(rnmfile, outputdir):
                 else:
                     count = 1
                     length = str(len(seq))
+                if return_time:
+                    curr_time = float(seq_tmp.group(3))
+                    if prev_time >= 0:
+                        time_spent.append(curr_time - prev_time)
+                    prev_time = curr_time
             if h_rep:
                 db = rnm_to_dotbracket(seqr, h_rep.group(1))
                 fname = "_".join([fpre, length, str(count) + ".dbn"])
@@ -754,7 +765,13 @@ def get_rnm_structs_dbn(rnmfile, outputdir):
                     w.write(seq + "\n")
                     w.write(db + "\n")
                 files.append(outputdir + "/" + fname)
-        return files, energy_path
+        if return_time:
+            # add in last time and check for potential user input error
+            assert total_time >= prev_time, "Total simulation time is less than time found in .rnm file"
+            time_spent.append(total_time - prev_time)
+            return files, energy_path, time_spent
+        else:
+            return files, energy_path
 
 
 def rnm_to_dotbracket(seql, h_rep):
