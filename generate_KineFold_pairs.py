@@ -26,12 +26,16 @@ from collections import defaultdict
 LucksLabUtils_config.config("Quest_R2D2")  # set up environment
 
 # parse command line arguments
-opts = OSU.getopts("", ["KineFold_dir=", "out_dir=", "time_weight", "simulation_time_ms="])
+opts = OSU.getopts("", ["KineFold_dir=", "out_dir=", "time_weight", "simulation_time_ms=", "last_structure"])
 print opts
 KineFold_dir = opts["--KineFold_dir"]
 outdir = OSU.create_directory(opts["--out_dir"])
 time_weight = True if "--time_weight" in opts else False
+last_structure = True if "--last_structure" in opts else False
 simulation_time_ms = int(opts["--simulation_time_ms"]) if "--simulation_time_ms" in opts else -1
+
+assert int(time_weight) + int(last_structure) <= 1, ("Only can specify either time_weight OR last_structure")
+
 
 # From Paul Gasper's pairs_from_dbn_2.py
 def read_dbn(dbn_fn):
@@ -78,6 +82,10 @@ for rf in rnm_files:
         kf_dbns, kf_energy_path, kf_times = SU.get_rnm_structs_dbn(rf, outdir, time_weight, simulation_time_ms)
     else:
         kf_dbns, kf_energy_path = SU.get_rnm_structs_dbn(rf, outdir)
+    if last_structure:  # ignoring time spent because only considering structure at end of simulation
+        OSU.remove_files(kf_dbns[:-1])
+        kf_dbns = kf_dbns[-1:]
+        kf_energy_path = kf_energy_path[-1:]
     for i in range(len(kf_dbns)):
         seq, struct = read_dbn(kf_dbns[i])
         nt_length = len(seq)
