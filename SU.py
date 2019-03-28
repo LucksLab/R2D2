@@ -669,12 +669,19 @@ def calc_benchmark_statistics_matrix(react_mat, ct_mat):
     FP = numpy.where(diff == 1)[0].shape[0]
     FN = numpy.where(diff == -1)[0].shape[0]
     TP = numpy.where(ct_mat_ut == 1)[0].shape[0] - FN
+    not_relevant_count = sum(range(1, ct_mat.shape[0] + 1))
+    TN = numpy.where(ct_mat_ut == 0)[0].shape[0] - FP - not_relevant_count
     print "TP: " + str(TP)
     print "FN: " + str(FN)
     print "FP: " + str(FP)
+    print "TN: " + str(TN)
     bm_stats["F_score"] = 2*TP / float(2*TP + FN + FP) if TP + FN + FP != 0 else float('nan')
     bm_stats["Sensitivity"] = TP / float(TP + FN) if TP + FN != 0 else float('nan')
     bm_stats["PPV"] = TP / float(TP + FP) if TP + FP != 0 else float('nan')
+    bm_stats["TP"] = TP
+    bm_stats["FN"] = FN
+    bm_stats["FP"] = FP
+    bm_stats["TN"] = TN
     print "Benchmark statistics: " + str(bm_stats)
     return bm_stats
 
