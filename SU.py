@@ -96,7 +96,8 @@ def runRNAstructure_CircleCompare(predicted_ct, accepted_ct, outputfile, shape="
     """
     cmd = 'CircleCompare -e %s %s %s' % (predicted_ct, accepted_ct, outputfile)
     if shape != "":
-        cmd += " -SHAPE %s > /dev/null" % (shape)
+        cmd += " -SHAPE %s" % (shape)
+    cmd += " > /dev/null"
     os.system(cmd)
 
 
@@ -119,7 +120,7 @@ def run_dot2ct(dbnfile, ctfile):
     os.system(dot2ct_cmd)
 
 
-def RNAstructure_sample(in_file_prefix, e_val, output_dir, seqfile="", shapefile="", constraintfile="", label="", num_proc=10, shape_slope=1.1, shape_intercept=-0.3, wn_tag=""):
+def RNAstructure_sample(in_file_prefix, e_val, output_dir, seqfile="", shapefile="", constraintfile="", label="", num_proc=10, shape_slope=1.1, shape_intercept=-0.3, wn_tag="", lock=None):
     """
     Statistically sample one RNA, using one "mode" of RNAstructure (noshape, shape, (hard) constrained).
     Return list of structures. Uses multiple processors. Potentially can do more than one mode at a time (haven't tried it yet).
@@ -129,14 +130,18 @@ def RNAstructure_sample(in_file_prefix, e_val, output_dir, seqfile="", shapefile
     num_proc: Number of threads to use in parallel
     """
     # Sampling mode implemented through calculation of the partition function
+    if lock is not None:
+        lock.acquire()
     if seqfile == "":
         runRNAstructure_partition(in_file_prefix+".seq", in_file_prefix+".pfs", shapefile, constraintfile, shape_slope=shape_slope, shape_intercept=shape_intercept, parallel=num_proc != 1)
     else:
         runRNAstructure_partition(seqfile, in_file_prefix+".pfs", shapefile, constraintfile, shape_slope=shape_slope, shape_intercept=shape_intercept, parallel=num_proc != 1)
+    if lock is not None:
+        lock.release()
     # parallelization
     e_list = [1000 if (ei+1)*1000 <= e_val else max(0, e_val - ei*1000) for ei in range(int(math.ceil(e_val/1000) + 1)) if max(0, e_val - ei*1000) > 0]
     seed_list = random.sample(xrange(1, 10000000), len(e_list))  # possible to sample from stochastic up to 100000000
-    args_pool = zip(range(len(e_list)), [in_file_prefix]*len(e_list), [output_dir]*len(e_list), e_list, seed_list, repeat(wn_tag))
+    args_pool = zip(range(len(e_list)), [in_file_prefix]*len(e_list), [output_dir]*len(e_list), e_list, seed_list, repeat(wn_tag), repeat(lock))
     structs = collections.defaultdict(int)  # holds counts for each structure
     
     # JBL Q - it looks like we never call this with num_proc > 1 from PCSU. Can you verify?
@@ -165,13 +170,17 @@ def RNAstructure_sample(in_file_prefix, e_val, output_dir, seqfile="", shapefile
     return structs, structs_labels
 
 
-def RNAstructure_sample_process(worker_num, in_file_prefix, output_dir, e, seed, wn_tag=""):
+def RNAstructure_sample_process(worker_num, in_file_prefix, output_dir, e, seed, wn_tag="", lock=None):
     """
     Process used in RNAstructure_sample. Called from RNAstructure_sample_process_helper.
     """
     wn = str(worker_num) + wn_tag
     print "Worker num: " + wn
+    if lock is not None:
+        lock.acquire()
     runRNAstructure_stochastic(in_file_prefix+".pfs", output_dir+wn+"temp.ct", e=e, seed=seed, parallel=False)
+    if lock is not None:
+        lock.release()
     structs = get_ct_structs(output_dir+wn+"temp.ct")
     structs_str = [",".join(s) for s in structs]
     OSU.remove_file(output_dir+wn+"temp.ct")
@@ -575,6 +584,29 @@ def ct_struct_to_binary_mat(ct):
     return ret
 
 
+def binary_mat_to_binary_ct(struct_mat):
+    """
+    binary structure matrix (0's and 1's) to binary ct format (0's and 1's)
+    """
+    if not isinstance(struct_mat, numpy.matrix):
+        struct_mat = numpy.matrix(struct_mat)
+    return struct_mat.sum(axis=0).tolist()[0]
+
+
+def binary_mat_to_ct(struct_mat):
+    """
+    binary structure matrix (0's and 1's) to ct format (0's for unpaired and paired nt indices (1-index))
+    """
+    if not isinstance(struct_mat, numpy.matrix):
+        struct_mat = numpy.matrix(struct_mat)
+    paired_pos = numpy.where(struct_mat == 1)
+    ct = ["0"] * len(struct_mat)
+    for x,y in zip(paired_pos[0], paired_pos[1]):
+        ct[x] = str(y + 1)
+        ct[y] = str(x + 1)
+    return ct
+
+
 def cap_rho_or_ct_list(arr, max_val=-1):
     """
     Defined this to avoid using many lambda functions of this same function.
@@ -669,19 +701,21 @@ def calc_benchmark_statistics_matrix(react_mat, ct_mat):
     FP = numpy.where(diff == 1)[0].shape[0]
     FN = numpy.where(diff == -1)[0].shape[0]
     TP = numpy.where(ct_mat_ut == 1)[0].shape[0] - FN
-    not_relevant_count = sum(range(1, ct_mat.shape[0] + 1))
-    TN = numpy.where(ct_mat_ut == 0)[0].shape[0] - FP - not_relevant_count
+    TN_mat = sum(range(ct_mat_ut.shape[0])) - FP - FN - TP
+    TN_ct = ct_mat_ut.shape[0] - FP - FN - TP
     print "TP: " + str(TP)
     print "FN: " + str(FN)
     print "FP: " + str(FP)
-    print "TN: " + str(TN)
+    print "TN_mat: " + str(TN_mat)
+    print "TN_ct: " + str(TN_ct)
     bm_stats["F_score"] = 2*TP / float(2*TP + FN + FP) if TP + FN + FP != 0 else float('nan')
     bm_stats["Sensitivity"] = TP / float(TP + FN) if TP + FN != 0 else float('nan')
     bm_stats["PPV"] = TP / float(TP + FP) if TP + FP != 0 else float('nan')
     bm_stats["TP"] = TP
     bm_stats["FN"] = FN
     bm_stats["FP"] = FP
-    bm_stats["TN"] = TN
+    bm_stats["TN_mat"] = TN_mat
+    bm_stats["TN_ct"] = TN_ct
     print "Benchmark statistics: " + str(bm_stats)
     return bm_stats
 
