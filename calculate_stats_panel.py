@@ -22,6 +22,7 @@ import SU
 import OSU
 import PAU
 import NAU
+import PCSU
 import LucksLabUtils_config
 import glob
 import cPickle as pickle
@@ -32,6 +33,9 @@ from multiprocessing import Pool, Lock
 import numpy
 from sys import maxsize
 from sklearn.decomposition import PCA
+from sklearn.manifold import MDS
+from sklearn.preprocessing import scale
+from sklearn.metrics import pairwise_distances
 import matplotlib as mpl
 mpl.use('Agg')
 import matplotlib.pyplot as plt
@@ -43,6 +47,7 @@ opts = OSU.getopts("o:c:r:p:", ["shape_intercept=", "shape_slope="])
 print opts
 numpy.set_printoptions(threshold=maxsize)
 plt.style.use('seaborn-whitegrid')
+fig = plt.figure(figsize = (8,8))
 
 reactivities_files = glob.glob(opts['-r'])
 crystal_files = glob.glob(opts['-c'])
@@ -64,11 +69,12 @@ pickle.dump(crystals, open(output_dir + "/crystals.p", "wb"))
 print crystals.keys()
 print reactivities.keys()
 
+
 def R2D2_process_wrapper(arg_tuple):
     return R2D2_process(*arg_tuple)
 
 
-def R2D2_process(input_prefix, R2D2_output_dir, draw_dir, react_rhos, crystals_ck, rnum, parallel=False):
+def R2D2_process(input_prefix, R2D2_output_dir, draw_dir, react_rhos, crystals_ck, rnum):
     """
     Slightly reduced version of a R2D2 process for this benchmarking code.
     # taking code from cotranscriptional case (PCSU.run_cotrans_length) which has extraneous parts in this use case
@@ -95,19 +101,28 @@ def R2D2_process(input_prefix, R2D2_output_dir, draw_dir, react_rhos, crystals_c
     sampled_structs = set()
 
     # Vanilla Sampling
-    structs, structs_labels = SU.RNAstructure_sample(input_prefix, e, R2D2_output_dir, label="noshape", num_proc=1, wn_tag="_%s"%(rnum), lock=lock)
+    if lock is None:
+        structs, structs_labels = SU.RNAstructure_sample(input_prefix, e, R2D2_output_dir, label="noshape", num_proc=1, wn_tag="_%s"%(rnum))
+    else:
+        structs, structs_labels = SU.RNAstructure_sample(input_prefix, e, R2D2_output_dir, label="noshape", num_proc=1, wn_tag="_%s"%(rnum), lock=lock)
     sampled_structs.update(structs_labels)
     OSU.increment_dict_counts(sampled_structs_count, structs)
 
     # Sampling with SHAPE constraints
-    structs, structs_labels = SU.RNAstructure_sample(input_prefix, e, R2D2_output_dir, shapefile=input_prefix+".rho", label="shape", num_proc=1, wn_tag="_%s"%(rnum), lock=lock)
+    if lock is None:
+        structs, structs_labels = SU.RNAstructure_sample(input_prefix, e, R2D2_output_dir, shapefile=input_prefix+".rho", label="shape", num_proc=1, wn_tag="_%s"%(rnum))
+    else:
+        structs, structs_labels = SU.RNAstructure_sample(input_prefix, e, R2D2_output_dir, shapefile=input_prefix+".rho", label="shape", num_proc=1, wn_tag="_%s"%(rnum), lock=lock)
     sampled_structs.update(structs_labels)
     OSU.increment_dict_counts(sampled_structs_count, structs)
 
     # Sampling with hard constraints
     XB = SU.get_indices_rho_gt_c(react_rhos, constrained_c, one_index=True)  # RNAstructure is 1-indexed
     SU.make_constraint_file(output_prefix+".con", [], XB, [], [], [], [], [], [])
-    structs, structs_labels = SU.RNAstructure_sample(input_prefix, e, R2D2_output_dir, constraintfile=output_prefix+".con", label="constrained_"+str(constrained_c), num_proc=1, wn_tag="_%s"%(rnum), lock=lock)
+    if lock is None:
+        structs, structs_labels = SU.RNAstructure_sample(input_prefix, e, R2D2_output_dir, constraintfile=output_prefix+".con", label="constrained_"+str(constrained_c), num_proc=1, wn_tag="_%s"%(rnum))
+    else:
+        structs, structs_labels = SU.RNAstructure_sample(input_prefix, e, R2D2_output_dir, constraintfile=output_prefix+".con", label="constrained_"+str(constrained_c), num_proc=1, wn_tag="_%s"%(rnum), lock=lock)
     sampled_structs.update(structs_labels)
     OSU.increment_dict_counts(sampled_structs_count, structs)
 
@@ -175,7 +190,7 @@ def R2D2_process(input_prefix, R2D2_output_dir, draw_dir, react_rhos, crystals_c
     return curr_stats, selected_react_mats
 
 
-def parse_R2D2_process_output(out_stats, selected_react_mats, bm_R2D2_all, R2D2_all_selected, num_selected, R2D2_selected_binary_cts):
+def parse_R2D2_process_output(out_stats, selected_react_mats, bm_R3D2_all, R2D2_all_selected, num_selected, R2D2_selected_binary_cts, R2D2_selected_binary_mats):
     """ parse R2D2 process output """
     for csk, value in out_stats.items():
         bm_R2D2_all[csk].append(value)
@@ -183,7 +198,21 @@ def parse_R2D2_process_output(out_stats, selected_react_mats, bm_R2D2_all, R2D2_
         R2D2_all_selected = numpy.add(R2D2_all_selected, srm)
         num_selected += 1
         R2D2_selected_binary_cts.append(SU.binary_mat_to_binary_ct(srm))
-    return bm_R2D2_all, R2D2_all_selected, num_selected, R2D2_selected_binary_cts
+        R2D2_selected_binary_mats.append(srm)
+    return bm_R2D2_all, R2D2_all_selected, num_selected, R2D2_selected_binary_cts, R2D2_selected_binary_mats
+
+
+def write_R2D2_output_to_files(reactivities_prefix, R2D2_pairs, R2D2_consensus, react_rhos, crystals_mat, crystals_ct, cryst_seq):
+    # Write out results of R2D2 iterations
+    with open("%s_R2D2_pairs.txt" % (reactivities_prefix), "w") as f:
+        f.write("\n".join(["\t".join([str(bp) for bp in row]) for row in R2D2_pairs.tolist()]) + "\n")
+    with open("%s_R2D2_consensus.txt" % (reactivities_prefix), "w") as f:
+        f.write("\n".join(["\t".join([str(bp) for bp in row]) for row in R2D2_consensus.tolist()]) + "\n")
+    with open("%s_R2D2_consensus.stats" % (reactivities_prefix), "w") as f:
+        f.write(str(SU.calc_benchmark_statistics_matrix(R2D2_consensus, crystals_mat)))
+    write_reactivities_in_ct(SU.binary_mat_to_binary_ct(R2D2_consensus), react_rhos, reactivities_prefix+"_R2D2_consensus_ct_react.txt")
+    SU.ct_list_to_file(R2D2_consensus_ct, cryst_seq, "%s_R2D2_consensus.ct" % (reactivities_prefix))
+    write_reactivities_in_ct(crystals_ct, react_rhos, reactivities_prefix+"_crystal_ct_react.txt")
 
 
 def init(l):
@@ -204,10 +233,124 @@ def write_reactivities_in_ct(ct, react, outfile):
         f.write("Avg unpaired:\t" + str(sum([r for r, c in react_ct_zip if c == 0]) / len(react_ct_zip)) + "\n")
 
 
+def run_Fold_process_wrapper(arg_tuple):
+    return run_Fold(*arg_tuple)
+
+
+def run_Fold(seqfile, reactivities_prefix, react_rhos, num_proc, crystals_mat, crystals_ctfile, output_suffix, shape_direct=False, shape_slope=1.1, shape_intercept=-0.3):
+    """
+    RNAstructure-Fold process
+    Will handle both SHAPE-directed and not SHAPE-directed
+    """
+    if lock is not None:
+        lock.acquire()
+    if shape_direct:
+        SU.runRNAstructure_fold(seqfile, "%s_%s.ct" % (reactivities_prefix, output_suffix), shapefile=reactivities_prefix+".rho", p=num_proc, shape_intercept=shape_intercept, shape_slope=shape_slope)
+    else:
+        SU.runRNAstructure_fold(seqfile, "%s_%s.ct" % (reactivities_prefix, output_suffix), p=num_proc, shape_intercept=shape_intercept, shape_slope=shape_slope)
+
+    SU.runRNAstructure_CircleCompare("%s_%s.ct" % (reactivities_prefix, output_suffix), crystals_ctfile, "%s_%s.ps" % (reactivities_prefix, output_suffix))
+    if lock is not None:
+        lock.release()
+    OSU.system_command("convert %s_%s.ps %s_%s.jpg" % (reactivities_prefix, output_suffix, reactivities_prefix, output_suffix))
+    with open("%s_%s.stats" % (reactivities_prefix, output_suffix), "w") as f:
+        fold_shape_ct = SU.get_ct_structs("%s_%s.ct" % (reactivities_prefix, output_suffix))[0]
+        fold_shape_react_mat = SU.ct_struct_to_binary_mat(fold_shape_ct)
+        f.write(str(SU.calc_benchmark_statistics_matrix(fold_shape_react_mat, crystals_mat)))
+    write_reactivities_in_ct(fold_shape_ct, react_rhos, "%s_%s_ct_react.txt" % (reactivities_prefix, output_suffix))
+    return fold_shape_ct, fold_shape_react_mat
+
+
+def run_PCA(X, reactivities_prefix, center=False, scale_std=False):
+    """ PCA """
+    pca = PCA(n_components=2)
+    if not isinstance(X, numpy.matrix):
+        X = numpy.matrix(X)
+    if center is True or scale_std is True:
+        output_prefix = []
+        X = scale(X, with_mean=center, with_std=scale_std)
+        if center is True:
+            output_prefix.append("centered")
+        if scale_std is True:
+            output_prefix.append("scaled")
+        output_prefix = "_".join(output_prefix) + "_"
+    else:
+        output_prefix = ""
+    principal_components = pca.fit_transform(X)
+    with open("%s_%sPCA_coords.txt" % (reactivities_prefix, output_prefix), "w") as f:
+        f.write("\n".join(["\t".join([str(coord) for coord in row]) for row in principal_components.tolist()]) + "\n")
+
+    return principal_components
+
+
+def plot_PCA(principal_components, Y, colors, reactivities_prefix, center=False, scale_std=False):
+    if center is True or scale_std is True:
+        output_prefix = []
+        if center is True:
+            output_prefix.append("centered")
+        if scale_std is True:
+            output_prefix.append("scaled")
+        output_prefix = "_".join(output_prefix) + "_"
+    else:
+        output_prefix = ""
+    ax = fig.add_subplot(1,1,1)
+    ax.set_xlabel('Principal Component 1', fontsize = 15)
+    ax.set_ylabel('Principal Component 2', fontsize = 15)
+    ax.set_title('PCA', fontsize = 20)
+    ax.scatter(principal_components[:,0], principal_components[:,1], c=colors, s=23)
+    # adding individual points separately to get legend to work, and maintain correct axes window
+    for i in reversed(range(5)):
+        ax.scatter(principal_components[i,0], principal_components[i,1], c=colors[i], s=23, label=Y[i])
+    plt.legend(bbox_to_anchor=(1.03,0.5), loc="center left", borderaxespad=0)
+    plt.savefig("%s_%sPCA.png" % (reactivities_prefix, output_prefix), bbox_inches="tight")
+    plt.clf()
+
+
+def run_MDS_mat(X_mats, reactivities_prefix):
+    distances = SU.calc_distances_bt_matrices(X_mats)
+    model = MDS(n_components=2, dissimilarity='precomputed', random_state=1)
+    mds_coords = model.fit_transform(distances)
+    with open("%s_MDS_mat_coords.txt" % (reactivities_prefix), "w") as f:
+        f.write("\n".join(["\t".join([str(coord) for coord in row]) for row in mds_coords.tolist()]) + "\n")
+    return mds_coords
+
+
+def run_MDS_ct(X, reactivities_prefix, p=1):
+    """
+    Runs a ct version of MDS
+    X - assumed to be vectors of binary ct structures in each row
+    """
+    distances = pairwise_distances(X, metric='manhattan', n_jobs=p)
+    model = MDS(n_components=2, dissimilarity='precomputed', random_state=1)
+    mds_coords = model.fit_transform(distances)
+    with open("%s_MDS_ct_coords.txt" % (reactivities_prefix), "w") as f:
+        f.write("\n".join(["\t".join([str(coord) for coord in row]) for row in mds_coords.tolist()]) + "\n")
+    return mds_coords
+
+
+def plot_MDS(mds_coords, Y, colors, reactivities_prefix, suffix_string):
+    ax = fig.add_subplot(1,1,1)
+    ax.set_xlabel('Dimension 1', fontsize = 15)
+    ax.set_ylabel('Dimension 2', fontsize = 15)
+    ax.set_title('MDS', fontsize = 20)
+    ax.scatter(mds_coords[:,0], mds_coords[:,1], c=colors, s=23)
+    # adding individual points separately to get legend to work, and maintain correct axes window
+    for i in reversed(range(5)):
+        ax.scatter(mds_coords[i,0], mds_coords[i,1], c=colors[i], s=23, label=Y[i])
+    plt.legend(bbox_to_anchor=(1.03,0.5), loc="center left", borderaxespad=0)
+    plt.savefig("%s_MDS_%s.png" % (reactivities_prefix, suffix_string), bbox_inches="tight")
+    plt.clf()
+
+
+# set up lock and pool
 if num_proc > 1:
     l = Lock()
     pool = Pool(processes=num_proc, initializer=init, initargs=(l,))
+else:
+    global lock
+    lock = None
 
+# go through each reactivity dataset
 for k, v in reactivities.iteritems():
     react_rhos = v[0]
     react_seq = v[1]
@@ -219,46 +362,38 @@ for k, v in reactivities.iteritems():
     react_rhos = SU.recalc_rhos(react_rhos, ind_of_match, end_of_match)
     reactivities[k][0] = react_rhos
     reactivities[k][1] = react_seq[ind_of_match:end_of_match]
-
-    # SHAPE folding
     SU.rhos_list_to_file(react_rhos, reactivities[k][2]+".rho")
     seqfile = NAU.make_seq(reactivities[k][1], reactivities[k][2]+".seq")
-    SU.runRNAstructure_fold(seqfile, reactivities[k][2]+"_Fold_shape.ct", shapefile=reactivities[k][2]+".rho", p=num_proc, shape_intercept=shape_intercept, shape_slope=shape_slope)
-    SU.runRNAstructure_CircleCompare(reactivities[k][2]+"_Fold_shape.ct", crystals[ck][3], reactivities[k][2]+"_Fold_shape.ps")
-    OSU.system_command("convert %s_Fold_shape.ps %s_Fold_shape.jpg" % (reactivities[k][2], reactivities[k][2]))
-    with open(reactivities[k][2]+".stats", "w") as f:
-        fold_shape_ct = SU.get_ct_structs(reactivities[k][2]+"_Fold_shape.ct")[0]
-        react_mat = SU.ct_struct_to_binary_mat(fold_shape_ct)
-        f.write(str(SU.calc_benchmark_statistics_matrix(react_mat, crystals[ck][2])))
-    write_reactivities_in_ct(fold_shape_ct, react_rhos, reactivities[k][2]+"_Fold_shape_ct_react.txt")
 
-    # no SHAPE folding
-    SU.runRNAstructure_fold(seqfile, reactivities[k][2]+"_Fold_noshape.ct", p=num_proc, shape_intercept=shape_intercept, shape_slope=shape_slope)
-    SU.runRNAstructure_CircleCompare(reactivities[k][2]+"_Fold_noshape.ct", crystals[ck][3], reactivities[k][2]+"_Fold_noshape.ps")
-    OSU.system_command("convert %s_Fold_noshape.ps %s_Fold_noshape.jpg" % (reactivities[k][2], reactivities[k][2]))
-    with open(reactivities[k][2]+"_Fold_noshape.stats", "w") as f:
-        fold_noshape_ct = SU.get_ct_structs(reactivities[k][2]+"_Fold_noshape.ct")[0]
-        react_mat = SU.ct_struct_to_binary_mat(fold_noshape_ct)
-        f.write(str(SU.calc_benchmark_statistics_matrix(react_mat, crystals[ck][2])))
-    write_reactivities_in_ct(fold_noshape_ct, react_rhos, reactivities[k][2]+"_Fold_noshape_ct_react.txt")
-
-    # R2D2
-    # taking code from cotranscriptional case (PCSU.run_cotrans_length) which has extraneous parts in this use case
-    # few lines in PCSU.run_cotrans_length made it unable to be used for this case. ex. length_key
+    # Folding - Fold with SHAPE, Fold with no SHAPE, 100 R2D2 iterations
+    # R2D2 iteration done by taking code from cotranscriptional case (PCSU.run_cotrans_length) which has extraneous parts in this use case
+    ## few lines in PCSU.run_cotrans_length made it unable to be used for this case. ex. length_key
     draw_dir = OSU.create_directory("%s/%s" % (R2D2_output_dir, k))
     bm_R2D2_all = defaultdict(list)
     R2D2_all_selected = numpy.zeros((len(cryst_seq), len(cryst_seq)))
     R2D2_selected_binary_cts = []
+    R2D2_selected_binary_mats = []
     num_selected = 0
     if num_proc > 1:
-        args_pool = zip(repeat(reactivities[k][2]), repeat(R2D2_output_dir), repeat(draw_dir), repeat(react_rhos), repeat(crystals[ck]), range(100), repeat(True))
-        for out_stats, selected_react_mats in pool.imap(R2D2_process_wrapper, args_pool):
-            bm_R2D2_all, R2D2_all_selected, num_selected, R2D2_selected_binary_cts = parse_R2D2_process_output(out_stats, selected_react_mats, bm_R2D2_all, R2D2_all_selected, num_selected, R2D2_selected_binary_cts)
+        args_pool = [(seqfile, reactivities[k][2], react_rhos, num_proc, crystals[ck][2], crystals[ck][3], "Fold_shape", True, shape_slope, shape_intercept)]
+        args_pool.append((seqfile, reactivities[k][2], react_rhos, num_proc, crystals[ck][2], crystals[ck][3], "Fold_noshape", False, shape_slope, shape_intercept))
+        Fold_results = list(pool.imap(run_Fold_process_wrapper, args_pool))
+        fold_shape_ct, fold_shape_react_mat = Fold_results[0]
+        fold_noshape_ct, fold_noshape_react_mat = Fold_results[1]
+
+        args_pool = zip(repeat(reactivities[k][2]), repeat(R2D2_output_dir), repeat(draw_dir), repeat(react_rhos), repeat(crystals[ck]), range(100))
+        for out_stats, selected_react_mats in pool.imap_unordered(R2D2_process_wrapper, args_pool):
+            bm_R2D2_all, R2D2_all_selected, num_selected, R2D2_selected_binary_cts, R2D2_selected_binary_mats = parse_R2D2_process_output(out_stats, selected_react_mats, bm_R2D2_all, R2D2_all_selected, num_selected, R2D2_selected_binary_cts, R2D2_selected_binary_mats)
         del args_pool
     else:
+        # SHAPE folding
+        fold_shape_ct, fold_shape_react_mat = run_Fold(seqfile, reactivities[k][2], react_rhos, num_proc, crystals[ck][2], crystals[ck][3], "Fold_shape", shape_direct=True, shape_slope=shape_slope, shape_intercept=shape_intercept)
+        # no SHAPE folding
+        fold_noshape_ct, fold_noshape_react_mat = run_Fold(seqfile, reactivities[k][2], react_rhos, num_proc, crystals[ck][2], crystals[ck][3], "Fold_noshape", shape_direct=False, shape_slope=shape_slope, shape_intercept=shape_intercept)
+        # R2D2 iterations
         for rnum in range(1,101):
             out_stats, selected_react_mats = R2D2_process(input_prefix=reactivities[k][2], R2D2_output_dir=R2D2_output_dir, draw_dir=draw_dir, rnum=rnum)
-            bm_R2D2_all, R2D2_all_selected, num_selected, R2D2_selected_binary_cts = parse_R2D2_process_output(out_stats, selected_react_mats, bm_R2D2_all, R2D2_all_selected, num_selected, R2D2_selected_binary_cts)
+            bm_R2D2_all, R2D2_all_selected, num_selected, R2D2_selected_binary_cts, R2D2_selected_binary_mats = parse_R2D2_process_output(out_stats, selected_react_mats, bm_R2D2_all, R2D2_all_selected, num_selected, R2D2_selected_binary_cts, R2D2_selected_binary_mats)
 
     # finished R2D2 iterations for this dataset
     # report all and avg R2D2 results
@@ -269,42 +404,35 @@ for k, v in reactivities.iteritems():
 
     # find basepairs that occurred over 50% of the time, then calculate accuracy
     R2D2_pairs = R2D2_all_selected / num_selected
-    with open("%s_R2D2_pairs.txt" % (reactivities[k][2]), "w") as f:
-        f.write("\n".join(["\t".join([str(bp) for bp in row]) for row in R2D2_pairs.tolist()]) + "\n")
     R2D2_consensus = R2D2_pairs.round()
-    with open("%s_R2D2_consensus.txt" % (reactivities[k][2]), "w") as f:
-        f.write("\n".join(["\t".join([str(bp) for bp in row]) for row in R2D2_consensus.tolist()]) + "\n")
-    with open("%s_R2D2_consensus.stats" % (reactivities[k][2]), "w") as f:
-        f.write(str(SU.calc_benchmark_statistics_matrix(R2D2_consensus, crystals[ck][2])))
-    write_reactivities_in_ct(SU.binary_mat_to_binary_ct(R2D2_consensus), react_rhos, reactivities[k][2]+"_R2D2_consensus_ct_react.txt")
     R2D2_consensus_ct = SU.binary_mat_to_ct(R2D2_consensus)
-    SU.ct_list_to_file(R2D2_consensus_ct, cryst_seq, "%s_R2D2_consensus.ct" % (reactivities[k][2]))
+    write_R2D2_output_to_files(reactivities[k][2], R2D2_pairs, R2D2_consensus, react_rhos, crystals[ck][2], crystals[ck][4], cryst_seq)
 
-    # reactivities compared to crystal structure
-    write_reactivities_in_ct(crystals[ck][4], react_rhos, reactivities[k][2]+"_crystal_ct_react.txt")
-
-    # PCA
-    pca = PCA(n_components=2)
+    # PCA & MDS
     X = SU.ct_struct_to_binary_vec([fold_shape_ct, fold_noshape_ct, R2D2_consensus_ct, crystals[ck][4]])
     X += R2D2_selected_binary_cts
     Y = ["Fold_SHAPE", "Fold_noSHAPE", "R2D2_consensus", "crystal"]
     Y += ["R2D2_iteration"] * len(R2D2_selected_binary_cts)
-    colors = ['r', 'g', 'b', 'm'] + ['c'] * len(R2D2_selected_binary_cts)
-    principal_components = pca.fit_transform(numpy.array(X))
+    colors = ['r', 'g', 'c', 'm'] + ['w'] * len(R2D2_selected_binary_cts)
+    X_mats = [fold_shape_react_mat, fold_noshape_react_mat, R2D2_consensus, crystals[ck][2]] + R2D2_selected_binary_mats
 
-    with open("%s_PCA_coords.txt" % (reactivities[k][2]), "w") as f:
-        f.write("\n".join(["\t".join([str(coord) for coord in row]) for row in principal_components.tolist()]) + "\n")
+    args_pool = [(run_PCA, (X, reactivities[k][2], False, False)),
+                (run_PCA, (X, reactivities[k][2], True, False)),
+                (run_PCA, (X, reactivities[k][2], False, True)),
+                (run_PCA, (X, reactivities[k][2], True, True)),
+                (run_MDS_mat, (X_mats, reactivities[k][2])),
+                (run_MDS_ct, (X, reactivities[k][2], max(num_proc - 6, 1)))]
+    if num_proc > 1:
+        coords_list = list(pool.imap(PCSU.calculate_function_helper, args_pool))
+    else:
+        coords_list = [PCSU.calculate_function_helper(args_pool[i]) for i in range(len(args_pool))]
+    del X, X_mats
 
-    fig = plt.figure(figsize = (8,8))
-    ax = fig.add_subplot(1,1,1) 
-    ax.set_xlabel('Principal Component 1', fontsize = 15)
-    ax.set_ylabel('Principal Component 2', fontsize = 15)
-    ax.set_title('PCA', fontsize = 20)
-    ax.scatter(principal_components[:,0], principal_components[:,1], c=colors, s=23)
-    # adding individual points separately to get legend to work, and maintain correct axes window
-    for i in range(5):
-        ax.scatter(principal_components[i,0], principal_components[i,1], c=colors[i], s=23, label=Y[i])
-    ax.legend()
-    plt.savefig("%s_PCA.png" % (reactivities[k][2]))
+    # plotting is not thread-safe, so do one by one
+    plot_PCA(coords_list[0], Y, colors, reactivities[k][2], False, False)
+    plot_PCA(coords_list[1], Y, colors, reactivities[k][2], True, False)
+    plot_PCA(coords_list[2], Y, colors, reactivities[k][2], False, True)
+    plot_PCA(coords_list[3], Y, colors, reactivities[k][2], True, True)
+    plot_MDS(coords_list[4], Y, colors, reactivities[k][2], "mat")
+    plot_MDS(coords_list[5], Y, colors, reactivities[k][2], "ct")
 
-    del X, principal_components

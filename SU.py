@@ -657,11 +657,13 @@ def calc_bp_distance_matrix(react_mat, ct_mat, endoff=0):
     For now, endoff should be negative. Ex. disregard last base => endoff=-1
     Matrices' dimensions will be changed accordingly.
     """
-    if (len(react_mat) != len(ct_mat) or len(react_mat[0]) != len(ct_mat[0])):
-        raise Exception("calc_bp_distance_matrix: matrix dimensions not equal")
+    if not isinstance(react_mat, numpy.matrix):
+        react_mat = numpy.matrix(react_mat)
+    if not isinstance(ct_mat, numpy.matrix):
+        ct_mat = numpy.matrix(ct_mat)
 
-    react_mat = numpy.matrix(react_mat)
-    ct_mat = numpy.matrix(ct_mat)
+    if react_mat.shape != ct_mat.shape:
+        raise Exception("calc_bp_distance_matrix: matrix dimensions not equal")
 
     if endoff != 0:
         react_mat = react_mat[:endoff, :endoff]
