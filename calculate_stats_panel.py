@@ -252,7 +252,11 @@ def run_Fold(seqfile, reactivities_prefix, react_rhos, num_proc, crystals_mat, c
 
 
 def run_PCA(X, reactivities_prefix, center=False, scale_std=False):
-    """ PCA """
+    """
+    PCA
+
+    WARNING: Python's implementation of PCA may not give accurate coordinates for same structures
+    """
     pca = PCA(n_components=2)
     if not isinstance(X, numpy.matrix):
         X = numpy.matrix(X)
@@ -296,8 +300,12 @@ def plot_PCA(principal_components, Y, colors, reactivities_prefix, center=False,
 
 
 def run_MDS_mat(X_mats, reactivities_prefix):
+    """
+    WARNING: MDS implementation in python may have same eigenvalue bug as cmdscale() in R
+    https://stat.ethz.ch/pipermail/r-sig-ecology/2010-July/001390.html
+    """
     distances = SU.calc_distances_bt_matrices(X_mats)
-    model = MDS(n_components=2, dissimilarity='precomputed', random_state=1)
+    model = MDS(n_components=2, dissimilarity='precomputed', random_state=1)  # don't need random_state?
     mds_coords = model.fit_transform(distances)
     with open("%s_MDS_mat_coords.txt" % (reactivities_prefix), "w") as f:
         f.write("\n".join(["\t".join([str(coord) for coord in row]) for row in mds_coords.tolist()]) + "\n")
@@ -308,6 +316,9 @@ def run_MDS_ct(X, reactivities_prefix, p=1):
     """
     Runs a ct version of MDS
     X - assumed to be vectors of binary ct structures in each row
+
+    WARNING: MDS implementation in python may have same eigenvalue bug as cmdscale() in R
+    https://stat.ethz.ch/pipermail/r-sig-ecology/2010-July/001390.html
     """
     if not isinstance(X, numpy.matrix):
         X = numpy.matrix(X)
@@ -363,6 +374,8 @@ for k, v in reactivities.iteritems():
     R2D2_all_selected = numpy.zeros((len(cryst_seq), len(cryst_seq)))
     R2D2_selected_binary_cts = []
     R2D2_selected_binary_mats = []
+    out_stats_all = []
+    selected_reacts_mats_all = []
     num_selected = 0
     if num_proc > 1:
         args_pool = [(seqfile, reactivities[k][2], react_rhos, num_proc, crystals[ck][2], crystals[ck][3], "Fold_shape", True, shape_slope, shape_intercept)]
@@ -370,9 +383,10 @@ for k, v in reactivities.iteritems():
         Fold_results = list(pool.imap(run_Fold_process_wrapper, args_pool))
         fold_shape_ct, fold_shape_react_mat = Fold_results[0]
         fold_noshape_ct, fold_noshape_react_mat = Fold_results[1]
-        #args_pool = zip(repeat(reactivities[k][2]), repeat(R2D2_output_dir), repeat(draw_dir), repeat(react_rhos), repeat(crystals[ck]), range(1,101))
-        args_pool = zip(repeat(reactivities[k][2]), repeat(R2D2_output_dir), repeat(draw_dir), repeat(react_rhos), repeat(crystals[ck]), range(5))  # for debug
+        args_pool = zip(repeat(reactivities[k][2]), repeat(R2D2_output_dir), repeat(draw_dir), repeat(react_rhos), repeat(crystals[ck]), range(1,101))
         for out_stats, selected_react_mats in pool.imap_unordered(R2D2_process_wrapper, args_pool):
+            out_stats_all.append(out_stats)
+            selected_reacts_mats_all.append(selected_react_mats)
             bm_R2D2_all, R2D2_all_selected, num_selected, R2D2_selected_binary_cts, R2D2_selected_binary_mats = parse_R2D2_process_output(out_stats, selected_react_mats, bm_R2D2_all, R2D2_all_selected, num_selected, R2D2_selected_binary_cts, R2D2_selected_binary_mats)
         del args_pool
     else:
@@ -381,8 +395,7 @@ for k, v in reactivities.iteritems():
         # no SHAPE folding
         fold_noshape_ct, fold_noshape_react_mat = run_Fold(seqfile, reactivities[k][2], react_rhos, num_proc, crystals[ck][2], crystals[ck][3], "Fold_noshape", shape_direct=False, shape_slope=shape_slope, shape_intercept=shape_intercept)
         # R2D2 iterations
-        #for rnum in range(1,101):
-        for rnum in range(1,5):  # for debug
+        for rnum in range(1,101):
             out_stats, selected_react_mats = R2D2_process(reactivities[k][2], R2D2_output_dir, draw_dir, react_rhos, crystals[ck], rnum)
             bm_R2D2_all, R2D2_all_selected, num_selected, R2D2_selected_binary_cts, R2D2_selected_binary_mats = parse_R2D2_process_output(out_stats, selected_react_mats, bm_R2D2_all, R2D2_all_selected, num_selected, R2D2_selected_binary_cts, R2D2_selected_binary_mats)
     # finished R2D2 iterations for this dataset
@@ -403,6 +416,8 @@ for k, v in reactivities.iteritems():
     Y += ["R2D2_iteration"] * len(R2D2_selected_binary_cts)
     colors = ['r', 'g', 'c', 'm'] + ['w'] * len(R2D2_selected_binary_cts)
     X_mats = [fold_shape_react_mat, fold_noshape_react_mat, R2D2_consensus, crystals[ck][2]] + R2D2_selected_binary_mats
+
+
     args_pool = [(run_PCA, (X, reactivities[k][2], False, False)),
                 (run_PCA, (X, reactivities[k][2], True, False)),
                 (run_PCA, (X, reactivities[k][2], False, True)),
@@ -421,4 +436,3 @@ for k, v in reactivities.iteritems():
     plot_PCA(coords_list[3], Y, colors, reactivities[k][2], True, True)
     plot_MDS(coords_list[4], Y, colors, reactivities[k][2], "mat")
     plot_MDS(coords_list[5], Y, colors, reactivities[k][2], "ct")
-    break  # for debug
