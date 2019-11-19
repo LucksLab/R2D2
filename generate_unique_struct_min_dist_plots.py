@@ -142,7 +142,7 @@ def plot_MDS(mds_coords, Y, color_dict, reactivities_prefix, suffix_string):
         rows = [yi[0] for yi in enumerate(Y) if yi[1] == label_i]
         ax.scatter(mds_coords[rows,0], mds_coords[rows,1], c=color_dict[label_i], s=23, label=label_i)
     plt.legend(bbox_to_anchor=(1.03,0.5), loc="center left", borderaxespad=0)
-    plt.savefig("%s_MDS_%s.png" % (reactivities_prefix, suffix_string), bbox_inches="tight")
+    plt.savefig("%s_MDS_%s.pdf" % (reactivities_prefix, suffix_string), bbox_inches="tight")
     plt.clf()
 
 
@@ -158,7 +158,7 @@ with open(output_dir+"/"+outfile+".txt", "w") as f:
 sample_size_combinations = [",".join([str(combo_e) for combo_e in combo]) for combo in chain(*map(lambda x: sorted(combinations(sample_sizes, x)), range(1, len(sample_sizes)+1)))]
 color_dict = dict(zip(sample_size_combinations, color_palette("Spectral", len(sample_size_combinations))))
 plt.style.use('seaborn-whitegrid')
-fig = plt.figure(figsize = (8,8))
+fig = plt.figure(figsize = (3,3), dpi=300)
 
 for react_f in reactivities_files:
     file_name = re.findall("([^/]+).txt$", react_f)[0]
