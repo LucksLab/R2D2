@@ -33,7 +33,7 @@ import numpy
 
 LucksLabUtils_config.config("Quest_R2D2")
 
-opts = OSU.getopts("", ["sample_sizes=", "outfile_pre=", "output_dir=", "reactivities_files=", "linker_seq=", "pol_fp="])
+opts = OSU.getopts("", ["sample_sizes=", "outfile_pre=", "output_dir=", "reactivities_files=", "linker_seq=", "pol_fp=", "threads="])
 print opts
 infiles = opts["--reactivities_files"].split(",")
 outfile = opts["--outfile_pre"]
@@ -42,6 +42,7 @@ reactivities_files = opts["--reactivities_files"].split(",")
 linker_seq = opts["--linker_seq"]
 sample_sizes = [int(s) for s in opts["--sample_sizes"].split(",")]
 pol_fp = int(opts["--pol_fp"]) if "--pol_fp" in opts else 0
+p = int(opts["--threads"]) if "--threads" in opts else 1
 
 
 #TODO: move to SU and VIU if keeping PCA and MDS
@@ -97,12 +98,12 @@ def plot_PCA(principal_components, Y, color_dict, reactivities_prefix, center=Fa
     plt.clf()
 
 
-def run_MDS_mat(X_mats, reactivities_prefix):
+def run_MDS_mat(X_mats, reactivities_prefix, p=1):
     """
     WARNING: MDS implementation in python may have same eigenvalue bug as cmdscale() in R
     https://stat.ethz.ch/pipermail/r-sig-ecology/2010-July/001390.html
     """
-    distances = SU.calc_distances_bt_matrices(X_mats)
+    distances = SU.calc_distances_bt_matrices(X_mats, n_jobs=p)
     model = MDS(n_components=2, dissimilarity='precomputed', random_state=1)  # don't need random_state?
     mds_coords = model.fit_transform(distances)
     with open("%s_MDS_mat_coords.txt" % (reactivities_prefix), "w") as f:
@@ -258,8 +259,8 @@ for react_f in reactivities_files:
     """
 
     # MDS
-    mds_mat_coords = run_MDS_mat(X_mats, output_dir+"/"+outfile)
-    mds_ct_coords = run_MDS_ct(X, output_dir+"/"+outfile, p=1)
+    mds_mat_coords = run_MDS_mat(X_mats, output_dir+"/"+outfile, p=p)
+    mds_ct_coords = run_MDS_ct(X, output_dir+"/"+outfile, p=p)
     plot_MDS(mds_ct_coords, Y_first_sampled, first_color_dict, output_dir+"/"+outfile, "mat")
     plot_MDS(mds_mat_coords, Y_first_sampled, first_color_dict, output_dir+"/"+outfile, "ct")
 
