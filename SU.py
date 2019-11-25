@@ -22,6 +22,7 @@ import random
 import multiprocessing
 import collections
 from itertools import repeat
+from joblib import Parallel, delayed
 
 
 def runRNAstructure_fold(seqfile, ctfilename, shapefile="", m=1, shape_slope=1.1, shape_intercept=-0.3, p=-99, parallel=False):
