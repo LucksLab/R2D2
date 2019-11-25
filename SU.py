@@ -704,7 +704,7 @@ def calc_distances_bt_matrices(struct_matrices, endoff=0, n_jobs=1):
             distance_matrix[ind] = calc_bp_distance_matrix(struct_matrices[ind[0]], struct_matrices[ind[1]], endoff)
             distance_matrix[ind[::-1]] = distance_matrix[ind]
     else:
-        Parallel(n_jobs=n_jobs, prefer="threads", require="sharedmem")(
+        Parallel(n_jobs=n_jobs, backend="threading")(
             delayed(calc_bp_distance_matrix_helper)((struct_matrices[i[0]], struct_matrices[i[1]], endoff, distance_matrix, i))
             for i in zip(triu_i[0], triu_i[1]))
     del triu_i
