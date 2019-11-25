@@ -676,16 +676,36 @@ def calc_bp_distance_matrix(react_mat, ct_mat, endoff=0):
     return numpy.sum(diff)
 
 
-def calc_distances_bt_matrices(struct_matrices, endoff=0):
+def calc_bp_distance_matrix_helper(args):
+    """
+    Helper to unpack arguments and mutate shared argument distance_matrix which is second to last element
+    args:
+    0 - struct_matrix 1
+    1 - struct_matrix 2
+    2 - endoff
+    3 - distance_matrix
+    4 - index to mutate in distance_matrix
+    """
+    (args[3])[args[4]] = calc_bp_distance_matrix(*args[:-2])
+    (args[3])[args[4][::-1]] = (args[3])[args[4]]
+    return None
+
+
+def calc_distances_bt_matrices(struct_matrices, endoff=0, n_jobs=1):
     """
     Returns a distance matrix between structures in struct_matrices using the matrix-based base-pair distance metric.
     """
     triu_i = numpy.triu_indices(len(struct_matrices), 1)
     distance_matrix = numpy.zeros((len(struct_matrices), len(struct_matrices)))
-    for i in range(len(triu_i[0])):
-        ind = (triu_i[0][i], triu_i[1][i])
-        distance_matrix[ind] = calc_bp_distance_matrix(struct_matrices[ind[0]], struct_matrices[ind[1]], endoff)
-        distance_matrix[ind[::-1]] = distance_matrix[ind]
+    if n_jobs == 1:
+        for i in range(len(triu_i[0])):
+            ind = (triu_i[0][i], triu_i[1][i])
+            distance_matrix[ind] = calc_bp_distance_matrix(struct_matrices[ind[0]], struct_matrices[ind[1]], endoff)
+            distance_matrix[ind[::-1]] = distance_matrix[ind]
+    else:
+        Parallel(n_jobs=n_jobs, prefer="threads", require="sharedmem")(
+            delayed(calc_bp_distance_matrix_helper)((struct_matrices[i[0]], struct_matrices[i[1]], endoff, distance_matrix, i))
+            for i in zip(triu_i[0], triu_i[1]))
     del triu_i
     return distance_matrix
 
