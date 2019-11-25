@@ -700,10 +700,11 @@ def calc_distances_bt_matrices(struct_matrices, endoff=0, n_jobs=1):
             distance_matrix[ind] = calc_bp_distance_matrix(struct_matrices[ind[0]], struct_matrices[ind[1]], endoff)
             distance_matrix[ind[::-1]] = distance_matrix[ind]
     else:
-        parallel_results = Parallel(n_jobs=n_jobs, prefer="threads")(
+        ind = zip(triu_i[0], triu_i[1])
+        parallel_results = Parallel(n_jobs=n_jobs)(
             delayed(calc_bp_distance_matrix_helper)((struct_matrices[i[0]], struct_matrices[i[1]], endoff))
-            for i in zip(triu_i[0], triu_i[1]))
-        for ind, res in zip(zip(triu_i[0], triu_i[1]), parallel_results):
+            for i in ind)
+        for ind, res in zip(ind, parallel_results):
             distance_matrix[ind] = res
             distance_matrix[ind[::-1]] = res
     del triu_i
