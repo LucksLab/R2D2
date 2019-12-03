@@ -22,7 +22,6 @@ import random
 import multiprocessing
 import collections
 from itertools import repeat
-from joblib import Parallel, delayed
 
 
 def runRNAstructure_fold(seqfile, ctfilename, shapefile="", m=1, shape_slope=1.1, shape_intercept=-0.3, p=-99, parallel=False):
@@ -701,9 +700,8 @@ def calc_distances_bt_matrices(struct_matrices, endoff=0, n_jobs=1):
             distance_matrix[ind[::-1]] = distance_matrix[ind]
     else:
         ind = zip(triu_i[0], triu_i[1])
-        parallel_results = Parallel(n_jobs=n_jobs)(
-            delayed(calc_bp_distance_matrix_helper)((struct_matrices[i[0]], struct_matrices[i[1]], endoff))
-            for i in ind)
+        pool = multiprocessing.Pool(processes=n_jobs)
+        parallel_results = pool.map(calc_bp_distance_matrix_helper, [(struct_matrices[i[0]], struct_matrices[i[1]], endoff) for i in ind])
         for ind, res in zip(ind, parallel_results):
             distance_matrix[ind] = res
             distance_matrix[ind[::-1]] = res
