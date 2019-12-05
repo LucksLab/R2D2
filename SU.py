@@ -22,6 +22,11 @@ import random
 import multiprocessing
 import collections
 from itertools import repeat
+from sklearn.decomposition import PCA
+from sklearn.manifold import MDS
+from sklearn.preprocessing import scale
+from sklearn.metrics import pairwise_distances
+from concurrent.futures import ThreadPoolExecutor
 
 
 def runRNAstructure_fold(seqfile, ctfilename, shapefile="", m=1, shape_slope=1.1, shape_intercept=-0.3, p=-99, parallel=False):
@@ -676,6 +681,7 @@ def calc_bp_distance_matrix(react_mat, ct_mat, endoff=0):
     return numpy.sum(diff)
 
 
+# TODO: remove if not using
 def calc_bp_distance_matrix_helper(args):
     """
     Helper to unpack arguments and call calc_bp_distance_matrix
@@ -683,8 +689,30 @@ def calc_bp_distance_matrix_helper(args):
     0 - struct_matrix 1
     1 - struct_matrix 2
     2 - endoff
+    3 - index
     """
-    return calc_bp_distance_matrix(*args)
+    return (args[-1], calc_bp_distance_matrix(*(args[:-1])))
+
+
+def calc_bp_distance_matrix_initializer(struct_matrices, endoff):
+    """
+    Used as initializer in Pool
+    """
+    global matrices_list, endoff_num
+    matrices_list = struct_matrices
+    endoff_num = endoff
+
+
+def calc_bp_distance_matrix_helper_index(index):
+    """
+    Helper to unpack arguments and call calc_bp_distance_matrix
+    args:
+    0 - struct_matrix 1
+    1 - struct_matrix 2
+    2 - endoff
+    3 - index
+    """
+    return (index, calc_bp_distance_matrix(matrices_list[index[0]], matrices_list[index[1]], endoff_num))
 
 
 def calc_distances_bt_matrices(struct_matrices, endoff=0, n_jobs=1):
@@ -700,13 +728,84 @@ def calc_distances_bt_matrices(struct_matrices, endoff=0, n_jobs=1):
             distance_matrix[ind[::-1]] = distance_matrix[ind]
     else:
         ind = zip(triu_i[0], triu_i[1])
+        """
+        pool = multiprocessing.Pool(processes=n_jobs, initializer = calc_bp_distance_matrix_initializer, initargs=(struct_matrices, endoff))
+        pool_results = pool.imap_unordered(calc_bp_distance_matrix_helper_index, [i for i in ind], chunksize=10000)
+        pool.close()
+        pool.join()
+        """
+        """
+        calc_bp_distance_matrix_initializer(struct_matrices, endoff)
+        with ThreadPoolExecutor(max_workers=n_jobs) as executor:
+            futures = executor.map(calc_bp_distance_matrix_helper_index, [i for i in ind]) # start
+            pool_results = [future for future in futures] # wait for results
+        """
+        calc_bp_distance_matrix_initializer(struct_matrices, endoff)
         pool = multiprocessing.Pool(processes=n_jobs)
-        parallel_results = pool.map(calc_bp_distance_matrix_helper, [(struct_matrices[i[0]], struct_matrices[i[1]], endoff) for i in ind])
-        for ind, res in zip(ind, parallel_results):
-            distance_matrix[ind] = res
-            distance_matrix[ind[::-1]] = res
+        pool_results = pool.imap_unordered(calc_bp_distance_matrix_helper_index, [i for i in ind], chunksize=10000)
+        pool.close()
+        pool.join()
+        for curr_ind, res in pool_results:
+            distance_matrix[curr_ind] = res
+            distance_matrix[curr_ind[::-1]] = res
     del triu_i
     return distance_matrix
+
+
+def run_PCA(X, reactivities_prefix, center=False, scale_std=False):
+    """
+    PCA
+
+    WARNING: Python's implementation of PCA may not give accurate coordinates for same structures
+    """
+    pca = PCA(n_components=2)
+    if not isinstance(X, numpy.matrix):
+        X = numpy.matrix(X)
+    if center is True or scale_std is True:
+        output_prefix = []
+        X = scale(X, with_mean=center, with_std=scale_std)
+        if center is True:
+            output_prefix.append("centered")
+        if scale_std is True:
+            output_prefix.append("scaled")
+        output_prefix = "_".join(output_prefix) + "_"
+    else:
+        output_prefix = ""
+    principal_components = pca.fit_transform(X)
+    with open("%s_%sPCA_coords.txt" % (reactivities_prefix, output_prefix), "w") as f:
+        f.write("\n".join(["\t".join([str(coord) for coord in row]) for row in principal_components.tolist()]) + "\n")
+    return principal_components
+
+
+def run_MDS_mat(X_mats, reactivities_prefix, p=1):
+    """
+    WARNING: MDS implementation in python may have same eigenvalue bug as cmdscale() in R
+    https://stat.ethz.ch/pipermail/r-sig-ecology/2010-July/001390.html
+    """
+    distances = calc_distances_bt_matrices(X_mats, n_jobs=p)
+    model = MDS(n_components=2, dissimilarity='precomputed', random_state=1)  # don't need random_state?
+    mds_coords = model.fit_transform(distances)
+    with open("%s_MDS_mat_coords.txt" % (reactivities_prefix), "w") as f:
+        f.write("\n".join(["\t".join([str(coord) for coord in row]) for row in mds_coords.tolist()]) + "\n")
+    return mds_coords
+
+
+def run_MDS_ct(X, reactivities_prefix, p=1):
+    """
+    Runs a ct version of MDS
+    X - assumed to be vectors of binary ct structures in each row
+
+    WARNING: MDS implementation in python may have same eigenvalue bug as cmdscale() in R
+    https://stat.ethz.ch/pipermail/r-sig-ecology/2010-July/001390.html
+    """
+    if not isinstance(X, numpy.matrix):
+        X = numpy.matrix(X)
+    distances = pairwise_distances(X, metric='manhattan', n_jobs=p)
+    model = MDS(n_components=2, dissimilarity='precomputed', random_state=1)
+    mds_coords = model.fit_transform(distances)
+    with open("%s_MDS_ct_coords.txt" % (reactivities_prefix), "w") as f:
+        f.write("\n".join(["\t".join([str(coord) for coord in row]) for row in mds_coords.tolist()]) + "\n")
+    return mds_coords
 
 
 def calc_benchmark_statistics_matrix(react_mat, ct_mat):
