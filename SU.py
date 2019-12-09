@@ -741,13 +741,19 @@ def calc_distances_bt_matrices(struct_matrices, endoff=0, n_jobs=1):
             pool_results = [future for future in futures] # wait for results
         """
         calc_bp_distance_matrix_initializer(struct_matrices, endoff)
-        pool = multiprocessing.Pool(processes=n_jobs)
-        pool_results = pool.imap_unordered(calc_bp_distance_matrix_helper_index, [i for i in ind], chunksize=10000)
-        pool.close()
-        pool.join()
-        for curr_ind, res in pool_results:
-            distance_matrix[curr_ind] = res
-            distance_matrix[curr_ind[::-1]] = res
+        for big_chunk in xrange(0, len(ind), 180000000):
+            cur_ind = ind[big_chunk:(big_chunk+180000000)]
+        #for big_chunk in xrange(0, len(ind), 180):
+        #    cur_ind = ind[big_chunk:(big_chunk+180)]
+            pool = multiprocessing.Pool(processes=n_jobs)
+            pool_results = pool.imap_unordered(calc_bp_distance_matrix_helper_index, [i for i in ind], chunksize=min(10000, len(ind) / (n_jobs * 4)))
+            pool.close()
+            pool.join()
+            del pool
+            for curr_ind, res in pool_results:
+                distance_matrix[curr_ind] = res
+                distance_matrix[curr_ind[::-1]] = res
+            del pool_results
     del triu_i
     return distance_matrix
 
@@ -783,8 +789,12 @@ def run_MDS_mat(X_mats, reactivities_prefix, p=1):
     https://stat.ethz.ch/pipermail/r-sig-ecology/2010-July/001390.html
     """
     distances = calc_distances_bt_matrices(X_mats, n_jobs=p)
-    model = MDS(n_components=2, dissimilarity='precomputed', random_state=1)  # don't need random_state?
+    print "Finished run_MDS_mat distances"
+    model = MDS(n_components=2, dissimilarity='precomputed', n_jobs=p, random_state=1)  # don't need random_state?
+    print "Starting fit_transform"
     mds_coords = model.fit_transform(distances)
+    print "Finished fit_transform"
+    del distances, model
     with open("%s_MDS_mat_coords.txt" % (reactivities_prefix), "w") as f:
         f.write("\n".join(["\t".join([str(coord) for coord in row]) for row in mds_coords.tolist()]) + "\n")
     return mds_coords
@@ -800,9 +810,14 @@ def run_MDS_ct(X, reactivities_prefix, p=1):
     """
     if not isinstance(X, numpy.matrix):
         X = numpy.matrix(X)
+    print "Starting run_MDS_ct distances"
     distances = pairwise_distances(X, metric='manhattan', n_jobs=p)
-    model = MDS(n_components=2, dissimilarity='precomputed', random_state=1)
+    print "Finished run_MDS_ct distances"
+    model = MDS(n_components=2, dissimilarity='precomputed', n_jobs=p, random_state=1)
+    print "Starting fit_transform"
     mds_coords = model.fit_transform(distances)
+    print "Finished fit_transform"
+    del distances, model
     with open("%s_MDS_ct_coords.txt" % (reactivities_prefix), "w") as f:
         f.write("\n".join(["\t".join([str(coord) for coord in row]) for row in mds_coords.tolist()]) + "\n")
     return mds_coords

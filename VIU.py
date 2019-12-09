@@ -154,7 +154,7 @@ def plot_PCA(principal_components, Y, color_dict, reactivities_prefix, fig, plt,
         rows = [yi[0] for yi in enumerate(Y) if yi[1] == label_i]
         ax.scatter(principal_components[rows,0], principal_components[rows,1], c=color_dict[label_i], s=23, label=label_i)
     plt.legend(bbox_to_anchor=(1.03,0.5), loc="center left", borderaxespad=0)
-    plt.savefig("%s_%sPCA.png" % (reactivities_prefix, output_prefix), bbox_inches="tight")
+    plt.savefig("%s_%sPCA.pdf" % (reactivities_prefix, output_prefix), bbox_inches="tight")
     plt.clf()
 
 
