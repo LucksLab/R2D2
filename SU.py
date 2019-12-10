@@ -681,19 +681,6 @@ def calc_bp_distance_matrix(react_mat, ct_mat, endoff=0):
     return numpy.sum(diff)
 
 
-# TODO: remove if not using
-def calc_bp_distance_matrix_helper(args):
-    """
-    Helper to unpack arguments and call calc_bp_distance_matrix
-    args:
-    0 - struct_matrix 1
-    1 - struct_matrix 2
-    2 - endoff
-    3 - index
-    """
-    return (args[-1], calc_bp_distance_matrix(*(args[:-1])))
-
-
 def calc_bp_distance_matrix_initializer(struct_matrices, endoff):
     """
     Used as initializer in Pool
@@ -743,8 +730,6 @@ def calc_distances_bt_matrices(struct_matrices, endoff=0, n_jobs=1):
         calc_bp_distance_matrix_initializer(struct_matrices, endoff)
         for big_chunk in xrange(0, len(ind), 180000000):
             cur_ind = ind[big_chunk:(big_chunk+180000000)]
-        #for big_chunk in xrange(0, len(ind), 180):
-        #    cur_ind = ind[big_chunk:(big_chunk+180)]
             pool = multiprocessing.Pool(processes=n_jobs)
             pool_results = pool.imap_unordered(calc_bp_distance_matrix_helper_index, [i for i in ind], chunksize=min(10000, len(ind) / (n_jobs * 4)))
             pool.close()
@@ -753,7 +738,8 @@ def calc_distances_bt_matrices(struct_matrices, endoff=0, n_jobs=1):
             for curr_ind, res in pool_results:
                 distance_matrix[curr_ind] = res
                 distance_matrix[curr_ind[::-1]] = res
-            del pool_results
+            del pool_results, curr_ind, res
+            n_jobs = max(2, n_jobs/2)  # protect memory by forking less each round, TODO: dynamically determine this
     del triu_i
     return distance_matrix
 
