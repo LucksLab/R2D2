@@ -728,6 +728,8 @@ def calc_distances_bt_matrices(struct_matrices, endoff=0, n_jobs=1):
             pool_results = [future for future in futures] # wait for results
         """
         calc_bp_distance_matrix_initializer(struct_matrices, endoff)
+        """
+        # 4120765 109 nt
         for big_chunk in xrange(0, len(ind), 180000000):
             cur_ind = ind[big_chunk:(big_chunk+180000000)]
             pool = multiprocessing.Pool(processes=n_jobs)
@@ -740,6 +742,16 @@ def calc_distances_bt_matrices(struct_matrices, endoff=0, n_jobs=1):
                 distance_matrix[curr_ind[::-1]] = res
             del pool_results, curr_ind, res
             n_jobs = max(2, n_jobs/2)  # protect memory by forking less each round, TODO: dynamically determine this
+        """
+        pool = multiprocessing.Pool(processes=n_jobs, maxtasksperchild=180000000)
+        pool_results = pool.imap_unordered(calc_bp_distance_matrix_helper_index, [i for i in ind], chunksize=min(10000, len(ind) / (n_jobs * 4)))
+        pool.close()
+        pool.join()
+        del pool
+        for curr_ind, res in pool_results:
+            distance_matrix[curr_ind] = res
+            distance_matrix[curr_ind[::-1]] = res
+        del pool_results, curr_ind, res
     del triu_i
     return distance_matrix
 
@@ -769,15 +781,15 @@ def run_PCA(X, reactivities_prefix, center=False, scale_std=False):
     return principal_components
 
 
-def run_MDS_mat(X_mats, reactivities_prefix, p=1):
+def run_MDS_mat(X_mats, reactivities_prefix, p=1, MDS_p=1):
     """
     WARNING: MDS implementation in python may have same eigenvalue bug as cmdscale() in R
     https://stat.ethz.ch/pipermail/r-sig-ecology/2010-July/001390.html
     """
     distances = calc_distances_bt_matrices(X_mats, n_jobs=p)
-    print "Finished run_MDS_mat distances"
-    model = MDS(n_components=2, dissimilarity='precomputed', n_jobs=p, random_state=1)  # don't need random_state?
-    print "Starting fit_transform"
+    print "Finished run_MDS_mat distances, %s processes" % (p)
+    model = MDS(n_components=2, dissimilarity='precomputed', n_jobs=MDS_p, random_state=1)  # don't need random_state?
+    print "Starting fit_transform, %s processes" % (MDS_p)
     mds_coords = model.fit_transform(distances)
     print "Finished fit_transform"
     del distances, model
@@ -786,7 +798,7 @@ def run_MDS_mat(X_mats, reactivities_prefix, p=1):
     return mds_coords
 
 
-def run_MDS_ct(X, reactivities_prefix, p=1):
+def run_MDS_ct(X, reactivities_prefix, p=1, MDS_p=1):
     """
     Runs a ct version of MDS
     X - assumed to be vectors of binary ct structures in each row
@@ -796,11 +808,11 @@ def run_MDS_ct(X, reactivities_prefix, p=1):
     """
     if not isinstance(X, numpy.matrix):
         X = numpy.matrix(X)
-    print "Starting run_MDS_ct distances"
+    print "Starting run_MDS_ct distances, %s processes" % (p)
     distances = pairwise_distances(X, metric='manhattan', n_jobs=p)
     print "Finished run_MDS_ct distances"
-    model = MDS(n_components=2, dissimilarity='precomputed', n_jobs=p, random_state=1)
-    print "Starting fit_transform"
+    model = MDS(n_components=2, dissimilarity='precomputed', n_jobs=MDS_p, random_state=1)
+    print "Starting fit_transform, %s processes" % (MDS_p)
     mds_coords = model.fit_transform(distances)
     print "Finished fit_transform"
     del distances, model

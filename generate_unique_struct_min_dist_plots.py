@@ -30,7 +30,7 @@ from seaborn import color_palette
 
 LucksLabUtils_config.config("Quest_R2D2")
 
-opts = OSU.getopts("", ["sample_sizes=", "outfile_pre=", "output_dir=", "reactivities_files=", "linker_seq=", "pol_fp=", "processors="])
+opts = OSU.getopts("", ["sample_sizes=", "outfile_pre=", "output_dir=", "reactivities_files=", "linker_seq=", "pol_fp=", "processors=", "MDS_processors="])
 print opts
 infiles = opts["--reactivities_files"].split(",")
 outfile = opts["--outfile_pre"]
@@ -40,6 +40,7 @@ linker_seq = opts["--linker_seq"]
 sample_sizes = [int(s) for s in opts["--sample_sizes"].split(",")]
 pol_fp = int(opts["--pol_fp"]) if "--pol_fp" in opts else 0
 p = int(opts["--processors"]) if "--processors" in opts else 1
+MDS_p = int(opts["--MDS_processors"]) if "--MDS_processors" in opts else 1
 
 # setup counters, scaling functions, and output file header
 unique_struct_nums = defaultdict(list)
@@ -149,9 +150,9 @@ for react_f in reactivities_files:
     VIU.plot_PCA(principal_coords, Y_first_sampled, first_color_dict, output_dir+"/"+outfile, fig, plt, center=False, scale_std=False)
 
     # MDS
-    print "Will use %s processes" % (p)
-    mds_mat_coords = SU.run_MDS_mat(X_mats, output_dir+"/"+outfile, p=p)
+    print "Will use %s, %s processes" % (p, MDS_p)
+    mds_mat_coords = SU.run_MDS_mat(X_mats, output_dir+"/"+outfile, p=p, MDS_p=MDS_p)
     VIU.plot_MDS(mds_mat_coords, Y_first_sampled, first_color_dict, output_dir+"/"+outfile, "mat", fig, plt)
-    mds_ct_coords = SU.run_MDS_ct(X, output_dir+"/"+outfile, p=p)
+    mds_ct_coords = SU.run_MDS_ct(X, output_dir+"/"+outfile, p=p, MDS_p=MDS_p)
     VIU.plot_MDS(mds_ct_coords, Y_first_sampled, first_color_dict, output_dir+"/"+outfile, "ct", fig, plt)
 

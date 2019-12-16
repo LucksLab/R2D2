@@ -33,13 +33,14 @@ import numpy
 
 LucksLabUtils_config.config("Quest_R2D2")
 
-opts = OSU.getopts("", ["input_cts=", "input_names=", "output_dir=", "outfile=", "processors="])
+opts = OSU.getopts("", ["input_cts=", "input_names=", "output_dir=", "outfile=", "processors=", "MDS_processors="])
 print opts
 infiles = opts["--input_cts"].split(",")
 input_names = opts["--input_names"].split(",")
 output_dir = OSU.create_directory(opts["--output_dir"])
 outfile = opts["--outfile"]
 processors = int(opts["--processors"]) if "--processors" in opts else 1
+MDS_processors = int(opts["--MDS_processors"]) if "--MDS_processors" in opts else 1
 
 output_file_prefix = output_dir + "/" + outfile
 input_structs = set()
@@ -48,7 +49,7 @@ for curr_ct_file, curr_name in zip(infiles, input_names):
     curr_structs = [(",".join(struct), name) for struct, name in zip(SU.get_ct_structs(curr_ct_file), repeat(curr_name))]
     input_structs.update(curr_structs)
 unique_structs_merged = SU.merge_labels(input_structs, to_string=False)
-del input_structs
+del input_structs, curr_structs
 
 # output unique structures and which dataset it was found
 with open(output_file_prefix+".txt", "w") as f:
@@ -66,7 +67,7 @@ X = SU.ct_struct_to_binary_vec([ss[0].split(",") for ss in unique_structs_merged
 Y = [",".join(sorted(a[1].split(","))) for a in unique_structs_merged]  # sort labels in Y
 X_mats = SU.ct_struct_to_binary_mat([ssm[0].split(",") for ssm in unique_structs_merged])
 color_dict = dict(zip(sorted(set(Y)), color_palette("Spectral", len(name_combinations))))
-del unique_structs_merged, name_combinations
+del unique_structs_merged, name_combinations, ct_structs
 
 with open("%s/%s_color_dict.txt" % (output_dir, outfile), "w") as f:
     f.write("\n".join("\t".join([k,str(v)]) for k,v in color_dict.items()) + "\n")
@@ -76,11 +77,12 @@ with open("%s/%s_Y.txt" % (output_dir, outfile), "w") as f:
 # PCA
 principal_coords = SU.run_PCA(X, output_dir+"/"+outfile, center=False, scale_std=False)
 VIU.plot_PCA(principal_coords, Y, color_dict, output_dir+"/"+outfile, fig, plt, center=False, scale_std=False)
+del principal_coords
 
 # MDS
-mds_ct_coords = SU.run_MDS_ct(X, output_dir+"/"+outfile, p=processors)
+mds_ct_coords = SU.run_MDS_ct(X, output_dir+"/"+outfile, p=processors, MDS_p=MDS_processors)
 VIU.plot_MDS(mds_ct_coords, Y, color_dict, output_dir+"/"+outfile, "ct", fig, plt)
-del X
-mds_mat_coords = SU.run_MDS_mat(X_mats, output_dir+"/"+outfile, p=processors)
+del X, mds_ct_coords
+mds_mat_coords = SU.run_MDS_mat(X_mats, output_dir+"/"+outfile, p=processors, MDS_p=MDS_processors)
 VIU.plot_MDS(mds_mat_coords, Y, color_dict, output_dir+"/"+outfile, "mat", fig, plt)
 
