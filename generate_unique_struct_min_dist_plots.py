@@ -8,10 +8,10 @@ Generates plots of number of unique structures and minimum distance of the sampl
 --linker_seq		= Linker sequence
 --sample_sizes		= Comma delimited list of sample sizes
 
-Author: Angela M Yu, 2014-2017
+Author: Angela M Yu, 2014-2019
 Version: 0.0.1
 
-Copyright (C) 2016, 2017  Julius B. Lucks, Angela M Yu.
+Copyright (C) 2016, 2017, 2018, 2019  Julius B. Lucks, Angela M Yu.
 All rights reserved.
 Distributed under the terms of the GNU General Public License, see 'LICENSE'.
 """
