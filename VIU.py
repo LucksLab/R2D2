@@ -131,7 +131,7 @@ def run_VARNA(dbnfile, outfile, SHAPE_vals):
     os.system(command)
 
 
-def plot_PCA(principal_components, Y, color_dict, reactivities_prefix, fig, plt, center=False, scale_std=False):
+def plot_PCA(principal_components, Y, color_dict, reactivities_prefix, fig, plt, center=False, scale_std=False, xlim=None, ylim=None):
     if center is True or scale_std is True:
         output_prefix = []
         if center is True:
@@ -154,11 +154,13 @@ def plot_PCA(principal_components, Y, color_dict, reactivities_prefix, fig, plt,
         rows = [yi[0] for yi in enumerate(Y) if yi[1] == label_i]
         ax.scatter(principal_components[rows,0], principal_components[rows,1], c=color_dict[label_i], s=23, label=label_i)
     plt.legend(bbox_to_anchor=(1.03,0.5), loc="center left", borderaxespad=0)
+    plt.xlim(xlim)
+    plt.ylim(ylim)
     plt.savefig("%s_%sPCA.pdf" % (reactivities_prefix, output_prefix), bbox_inches="tight")
     plt.clf()
 
 
-def plot_MDS(mds_coords, Y, color_dict, reactivities_prefix, suffix_string, fig, plt):
+def plot_MDS(mds_coords, Y, color_dict, reactivities_prefix, suffix_string, fig, plt, xlim=None, ylim=None):
     ax = fig.add_subplot(1,1,1)
     ax.set_xlabel('Dimension 1', fontsize = 15)
     ax.set_ylabel('Dimension 2', fontsize = 15)
@@ -172,5 +174,7 @@ def plot_MDS(mds_coords, Y, color_dict, reactivities_prefix, suffix_string, fig,
         rows = [yi[0] for yi in enumerate(Y) if yi[1] == label_i]
         ax.scatter(mds_coords[rows,0], mds_coords[rows,1], c=color_dict[label_i], s=23, label=label_i)
     plt.legend(bbox_to_anchor=(1.03,0.5), loc="center left", borderaxespad=0)
+    plt.xlim(xlim)
+    plt.ylim(ylim)
     plt.savefig("%s_MDS_%s.pdf" % (reactivities_prefix, suffix_string), bbox_inches="tight")
     plt.clf()
