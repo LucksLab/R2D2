@@ -22,6 +22,11 @@ import random
 import multiprocessing
 import collections
 from itertools import repeat
+from sklearn.decomposition import PCA
+from sklearn.manifold import MDS
+from sklearn.preprocessing import scale
+from sklearn.metrics import pairwise_distances
+from concurrent.futures import ThreadPoolExecutor
 
 
 def runRNAstructure_fold(seqfile, ctfilename, shapefile="", m=1, shape_slope=1.1, shape_intercept=-0.3, p=-99, parallel=False):
@@ -96,7 +101,8 @@ def runRNAstructure_CircleCompare(predicted_ct, accepted_ct, outputfile, shape="
     """
     cmd = 'CircleCompare -e %s %s %s' % (predicted_ct, accepted_ct, outputfile)
     if shape != "":
-        cmd += " -SHAPE %s > /dev/null" % (shape)
+        cmd += " -SHAPE %s" % (shape)
+    cmd += " > /dev/null"
     os.system(cmd)
 
 
@@ -119,7 +125,7 @@ def run_dot2ct(dbnfile, ctfile):
     os.system(dot2ct_cmd)
 
 
-def RNAstructure_sample(in_file_prefix, e_val, output_dir, seqfile="", shapefile="", constraintfile="", label="", num_proc=10, shape_slope=1.1, shape_intercept=-0.3, wn_tag=""):
+def RNAstructure_sample(in_file_prefix, e_val, output_dir, seqfile="", shapefile="", constraintfile="", label="", num_proc=10, shape_slope=1.1, shape_intercept=-0.3, wn_tag="", lock=None):
     """
     Statistically sample one RNA, using one "mode" of RNAstructure (noshape, shape, (hard) constrained).
     Return list of structures. Uses multiple processors. Potentially can do more than one mode at a time (haven't tried it yet).
@@ -129,14 +135,18 @@ def RNAstructure_sample(in_file_prefix, e_val, output_dir, seqfile="", shapefile
     num_proc: Number of threads to use in parallel
     """
     # Sampling mode implemented through calculation of the partition function
+    if lock is not None:
+        lock.acquire()
     if seqfile == "":
         runRNAstructure_partition(in_file_prefix+".seq", in_file_prefix+".pfs", shapefile, constraintfile, shape_slope=shape_slope, shape_intercept=shape_intercept, parallel=num_proc != 1)
     else:
         runRNAstructure_partition(seqfile, in_file_prefix+".pfs", shapefile, constraintfile, shape_slope=shape_slope, shape_intercept=shape_intercept, parallel=num_proc != 1)
+    if lock is not None:
+        lock.release()
     # parallelization
     e_list = [1000 if (ei+1)*1000 <= e_val else max(0, e_val - ei*1000) for ei in range(int(math.ceil(e_val/1000) + 1)) if max(0, e_val - ei*1000) > 0]
     seed_list = random.sample(xrange(1, 10000000), len(e_list))  # possible to sample from stochastic up to 100000000
-    args_pool = zip(range(len(e_list)), [in_file_prefix]*len(e_list), [output_dir]*len(e_list), e_list, seed_list, repeat(wn_tag))
+    args_pool = zip(range(len(e_list)), [in_file_prefix]*len(e_list), [output_dir]*len(e_list), e_list, seed_list, repeat(wn_tag), repeat(lock))
     structs = collections.defaultdict(int)  # holds counts for each structure
     
     # JBL Q - it looks like we never call this with num_proc > 1 from PCSU. Can you verify?
@@ -165,13 +175,17 @@ def RNAstructure_sample(in_file_prefix, e_val, output_dir, seqfile="", shapefile
     return structs, structs_labels
 
 
-def RNAstructure_sample_process(worker_num, in_file_prefix, output_dir, e, seed, wn_tag=""):
+def RNAstructure_sample_process(worker_num, in_file_prefix, output_dir, e, seed, wn_tag="", lock=None):
     """
     Process used in RNAstructure_sample. Called from RNAstructure_sample_process_helper.
     """
     wn = str(worker_num) + wn_tag
     print "Worker num: " + wn
+    if lock is not None:
+        lock.acquire()
     runRNAstructure_stochastic(in_file_prefix+".pfs", output_dir+wn+"temp.ct", e=e, seed=seed, parallel=False)
+    if lock is not None:
+        lock.release()
     structs = get_ct_structs(output_dir+wn+"temp.ct")
     structs_str = [",".join(s) for s in structs]
     OSU.remove_file(output_dir+wn+"temp.ct")
@@ -575,6 +589,29 @@ def ct_struct_to_binary_mat(ct):
     return ret
 
 
+def binary_mat_to_binary_ct(struct_mat):
+    """
+    binary structure matrix (0's and 1's) to binary ct format (0's and 1's)
+    """
+    if not isinstance(struct_mat, numpy.matrix):
+        struct_mat = numpy.matrix(struct_mat)
+    return struct_mat.sum(axis=0).tolist()[0]
+
+
+def binary_mat_to_ct(struct_mat):
+    """
+    binary structure matrix (0's and 1's) to ct format (0's for unpaired and paired nt indices (1-index))
+    """
+    if not isinstance(struct_mat, numpy.matrix):
+        struct_mat = numpy.matrix(struct_mat)
+    paired_pos = numpy.where(struct_mat == 1)
+    ct = ["0"] * len(struct_mat)
+    for x,y in zip(paired_pos[0], paired_pos[1]):
+        ct[x] = str(y + 1)
+        ct[y] = str(x + 1)
+    return ct
+
+
 def cap_rho_or_ct_list(arr, max_val=-1):
     """
     Defined this to avoid using many lambda functions of this same function.
@@ -625,11 +662,13 @@ def calc_bp_distance_matrix(react_mat, ct_mat, endoff=0):
     For now, endoff should be negative. Ex. disregard last base => endoff=-1
     Matrices' dimensions will be changed accordingly.
     """
-    if (len(react_mat) != len(ct_mat) or len(react_mat[0]) != len(ct_mat[0])):
-        raise Exception("calc_bp_distance_matrix: matrix dimensions not equal")
+    if not isinstance(react_mat, numpy.matrix):
+        react_mat = numpy.matrix(react_mat)
+    if not isinstance(ct_mat, numpy.matrix):
+        ct_mat = numpy.matrix(ct_mat)
 
-    react_mat = numpy.matrix(react_mat)
-    ct_mat = numpy.matrix(ct_mat)
+    if react_mat.shape != ct_mat.shape:
+        raise Exception("calc_bp_distance_matrix: matrix dimensions not equal")
 
     if endoff != 0:
         react_mat = react_mat[:endoff, :endoff]
@@ -642,18 +681,144 @@ def calc_bp_distance_matrix(react_mat, ct_mat, endoff=0):
     return numpy.sum(diff)
 
 
-def calc_distances_bt_matrices(struct_matrices, endoff=0):
+def calc_bp_distance_matrix_initializer(struct_matrices, endoff):
+    """
+    Used as initializer in Pool
+    """
+    global matrices_list, endoff_num
+    matrices_list = struct_matrices
+    endoff_num = endoff
+
+
+def calc_bp_distance_matrix_helper_index(index):
+    """
+    Helper to unpack arguments and call calc_bp_distance_matrix
+    args:
+    0 - struct_matrix 1
+    1 - struct_matrix 2
+    2 - endoff
+    3 - index
+    """
+    return (index, calc_bp_distance_matrix(matrices_list[index[0]], matrices_list[index[1]], endoff_num))
+
+
+def calc_distances_bt_matrices(struct_matrices, endoff=0, n_jobs=1):
     """
     Returns a distance matrix between structures in struct_matrices using the matrix-based base-pair distance metric.
     """
     triu_i = numpy.triu_indices(len(struct_matrices), 1)
     distance_matrix = numpy.zeros((len(struct_matrices), len(struct_matrices)))
-    for i in range(len(triu_i[0])):
-        ind = (triu_i[0][i], triu_i[1][i])
-        distance_matrix[ind] = calc_bp_distance_matrix(struct_matrices[ind[0]], struct_matrices[ind[1]], endoff)
-        distance_matrix[ind[::-1]] = distance_matrix[ind]
+    if n_jobs == 1:
+        for i in range(len(triu_i[0])):
+            ind = (triu_i[0][i], triu_i[1][i])
+            distance_matrix[ind] = calc_bp_distance_matrix(struct_matrices[ind[0]], struct_matrices[ind[1]], endoff)
+            distance_matrix[ind[::-1]] = distance_matrix[ind]
+    else:
+        ind = zip(triu_i[0], triu_i[1])
+        """
+        pool = multiprocessing.Pool(processes=n_jobs, initializer = calc_bp_distance_matrix_initializer, initargs=(struct_matrices, endoff))
+        pool_results = pool.imap_unordered(calc_bp_distance_matrix_helper_index, [i for i in ind], chunksize=10000)
+        pool.close()
+        pool.join()
+        """
+        """
+        calc_bp_distance_matrix_initializer(struct_matrices, endoff)
+        with ThreadPoolExecutor(max_workers=n_jobs) as executor:
+            futures = executor.map(calc_bp_distance_matrix_helper_index, [i for i in ind]) # start
+            pool_results = [future for future in futures] # wait for results
+        """
+        calc_bp_distance_matrix_initializer(struct_matrices, endoff)
+        """
+        # 4120765 109 nt
+        for big_chunk in xrange(0, len(ind), 180000000):
+            cur_ind = ind[big_chunk:(big_chunk+180000000)]
+            pool = multiprocessing.Pool(processes=n_jobs)
+            pool_results = pool.imap_unordered(calc_bp_distance_matrix_helper_index, [i for i in ind], chunksize=min(10000, len(ind) / (n_jobs * 4)))
+            pool.close()
+            pool.join()
+            del pool
+            for curr_ind, res in pool_results:
+                distance_matrix[curr_ind] = res
+                distance_matrix[curr_ind[::-1]] = res
+            del pool_results, curr_ind, res
+            n_jobs = max(2, n_jobs/2)  # protect memory by forking less each round, TODO: dynamically determine this
+        """
+        pool = multiprocessing.Pool(processes=n_jobs, maxtasksperchild=180000000)
+        pool_results = pool.imap_unordered(calc_bp_distance_matrix_helper_index, [i for i in ind], chunksize=min(10000, len(ind) / (n_jobs * 4)))
+        pool.close()
+        pool.join()
+        del pool
+        for curr_ind, res in pool_results:
+            distance_matrix[curr_ind] = res
+            distance_matrix[curr_ind[::-1]] = res
+        del pool_results, curr_ind, res
     del triu_i
     return distance_matrix
+
+
+def run_PCA(X, reactivities_prefix, center=False, scale_std=False):
+    """
+    PCA
+
+    WARNING: Python's implementation of PCA may not give accurate coordinates for same structures
+    """
+    pca = PCA(n_components=2)
+    if not isinstance(X, numpy.matrix):
+        X = numpy.matrix(X)
+    if center is True or scale_std is True:
+        output_prefix = []
+        X = scale(X, with_mean=center, with_std=scale_std)
+        if center is True:
+            output_prefix.append("centered")
+        if scale_std is True:
+            output_prefix.append("scaled")
+        output_prefix = "_".join(output_prefix) + "_"
+    else:
+        output_prefix = ""
+    principal_components = pca.fit_transform(X)
+    with open("%s_%sPCA_coords.txt" % (reactivities_prefix, output_prefix), "w") as f:
+        f.write("\n".join(["\t".join([str(coord) for coord in row]) for row in principal_components.tolist()]) + "\n")
+    return principal_components
+
+
+def run_MDS_mat(X_mats, reactivities_prefix, p=1, MDS_p=1):
+    """
+    WARNING: MDS implementation in python may have same eigenvalue bug as cmdscale() in R
+    https://stat.ethz.ch/pipermail/r-sig-ecology/2010-July/001390.html
+    """
+    distances = calc_distances_bt_matrices(X_mats, n_jobs=p)
+    print "Finished run_MDS_mat distances, %s processes" % (p)
+    model = MDS(n_components=2, dissimilarity='precomputed', n_jobs=MDS_p, random_state=1)  # don't need random_state?
+    print "Starting fit_transform, %s processes" % (MDS_p)
+    mds_coords = model.fit_transform(distances)
+    print "Finished fit_transform"
+    del distances, model
+    with open("%s_MDS_mat_coords.txt" % (reactivities_prefix), "w") as f:
+        f.write("\n".join(["\t".join([str(coord) for coord in row]) for row in mds_coords.tolist()]) + "\n")
+    return mds_coords
+
+
+def run_MDS_ct(X, reactivities_prefix, p=1, MDS_p=1):
+    """
+    Runs a ct version of MDS
+    X - assumed to be vectors of binary ct structures in each row
+
+    WARNING: MDS implementation in python may have same eigenvalue bug as cmdscale() in R
+    https://stat.ethz.ch/pipermail/r-sig-ecology/2010-July/001390.html
+    """
+    if not isinstance(X, numpy.matrix):
+        X = numpy.matrix(X)
+    print "Starting run_MDS_ct distances, %s processes" % (p)
+    distances = pairwise_distances(X, metric='manhattan', n_jobs=p)
+    print "Finished run_MDS_ct distances"
+    model = MDS(n_components=2, dissimilarity='precomputed', n_jobs=MDS_p, random_state=1)
+    print "Starting fit_transform, %s processes" % (MDS_p)
+    mds_coords = model.fit_transform(distances)
+    print "Finished fit_transform"
+    del distances, model
+    with open("%s_MDS_ct_coords.txt" % (reactivities_prefix), "w") as f:
+        f.write("\n".join(["\t".join([str(coord) for coord in row]) for row in mds_coords.tolist()]) + "\n")
+    return mds_coords
 
 
 def calc_benchmark_statistics_matrix(react_mat, ct_mat):
@@ -669,12 +834,21 @@ def calc_benchmark_statistics_matrix(react_mat, ct_mat):
     FP = numpy.where(diff == 1)[0].shape[0]
     FN = numpy.where(diff == -1)[0].shape[0]
     TP = numpy.where(ct_mat_ut == 1)[0].shape[0] - FN
+    TN_mat = sum(range(ct_mat_ut.shape[0])) - FP - FN - TP
+    TN_ct = ct_mat_ut.shape[0] - FP - FN - TP
     print "TP: " + str(TP)
     print "FN: " + str(FN)
     print "FP: " + str(FP)
+    print "TN_mat: " + str(TN_mat)
+    print "TN_ct: " + str(TN_ct)
     bm_stats["F_score"] = 2*TP / float(2*TP + FN + FP) if TP + FN + FP != 0 else float('nan')
     bm_stats["Sensitivity"] = TP / float(TP + FN) if TP + FN != 0 else float('nan')
     bm_stats["PPV"] = TP / float(TP + FP) if TP + FP != 0 else float('nan')
+    bm_stats["TP"] = TP
+    bm_stats["FN"] = FN
+    bm_stats["FP"] = FP
+    bm_stats["TN_mat"] = TN_mat
+    bm_stats["TN_ct"] = TN_ct
     print "Benchmark statistics: " + str(bm_stats)
     return bm_stats
 
@@ -719,11 +893,13 @@ def generate_req_dat_file(fpre, sequence, time=160000, pseudoknots=False, entang
     return fpre + ".req"
 
 
-def get_rnm_structs_dbn(rnmfile, outputdir):
+def get_rnm_structs_dbn(rnmfile, outputdir, return_time=False, total_time=-1):
     """
     Takes the .rnm output from KineFold and creates associated .dbn files in
     the output directory. Outputs the names of the output files and respective
     KineFold free energies in order.
+    If return_time is set, then it will return the time spent in each
+    structure in ms. total_time must also be set in ms, ex. 40000 for 40 sec. 
     """
     with open(rnmfile, 'r') as f:
         fpre = re.findall("([^/]+).rnm$", rnmfile)[0]
@@ -733,6 +909,10 @@ def get_rnm_structs_dbn(rnmfile, outputdir):
         count = 1
         files = []
         energy_path = []
+        if return_time:
+            # KineFold seems to start at a longer length than 0 and from ssRNA
+            prev_time = -1
+            time_spent = []
         for line in f:
             seq_tmp = re.match("^([ACUG\s\[\]\^]+)\| ([-\d\.]+).*after ([\d\.]+).* (\d+) over", line)
             h_rep = re.match("^([ \-\d\']+) H\s+Helix numbering$", line)
@@ -746,6 +926,11 @@ def get_rnm_structs_dbn(rnmfile, outputdir):
                 else:
                     count = 1
                     length = str(len(seq))
+                if return_time:
+                    curr_time = float(seq_tmp.group(3))
+                    if prev_time >= 0:
+                        time_spent.append(curr_time - prev_time)
+                    prev_time = curr_time
             if h_rep:
                 db = rnm_to_dotbracket(seqr, h_rep.group(1))
                 fname = "_".join([fpre, length, str(count) + ".dbn"])
@@ -754,7 +939,13 @@ def get_rnm_structs_dbn(rnmfile, outputdir):
                     w.write(seq + "\n")
                     w.write(db + "\n")
                 files.append(outputdir + "/" + fname)
-        return files, energy_path
+        if return_time:
+            # add in last time and check for potential user input error
+            assert total_time >= prev_time, "Total simulation time is less than time found in .rnm file"
+            time_spent.append(total_time - prev_time)
+            return files, energy_path, time_spent
+        else:
+            return files, energy_path
 
 
 def rnm_to_dotbracket(seql, h_rep):

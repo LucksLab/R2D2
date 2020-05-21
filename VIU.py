@@ -129,3 +129,52 @@ def run_VARNA(dbnfile, outfile, SHAPE_vals):
     #command += ' > /dev/null 2>&1'
     print command
     os.system(command)
+
+
+def plot_PCA(principal_components, Y, color_dict, reactivities_prefix, fig, plt, center=False, scale_std=False, xlim=None, ylim=None):
+    if center is True or scale_std is True:
+        output_prefix = []
+        if center is True:
+            output_prefix.append("centered")
+        if scale_std is True:
+            output_prefix.append("scaled")
+        output_prefix = "_".join(output_prefix) + "_"
+    else:
+        output_prefix = ""
+    ax = fig.add_subplot(1,1,1)
+    ax.set_xlabel('Principal Component 1', fontsize = 15)
+    ax.set_ylabel('Principal Component 2', fontsize = 15)
+    ax.set_title('PCA', fontsize = 20)
+    # adding points with each label separately to get legend to work
+    try:
+        Y_unique = sorted(set(Y), key=int)
+    except:
+        Y_unique = set(Y)
+    for label_i in Y_unique:
+        rows = [yi[0] for yi in enumerate(Y) if yi[1] == label_i]
+        ax.scatter(principal_components[rows,0], principal_components[rows,1], c=color_dict[label_i], s=23, label=label_i)
+    plt.legend(bbox_to_anchor=(1.03,0.5), loc="center left", borderaxespad=0)
+    plt.xlim(xlim)
+    plt.ylim(ylim)
+    plt.savefig("%s_%sPCA.pdf" % (reactivities_prefix, output_prefix), bbox_inches="tight")
+    plt.clf()
+
+
+def plot_MDS(mds_coords, Y, color_dict, reactivities_prefix, suffix_string, fig, plt, xlim=None, ylim=None):
+    ax = fig.add_subplot(1,1,1)
+    ax.set_xlabel('Dimension 1', fontsize = 15)
+    ax.set_ylabel('Dimension 2', fontsize = 15)
+    ax.set_title('MDS', fontsize = 20)
+    # adding points with each label separately to get legend to work
+    try:
+        Y_unique = sorted(set(Y), key=int)
+    except:
+        Y_unique = set(Y)
+    for label_i in Y_unique:
+        rows = [yi[0] for yi in enumerate(Y) if yi[1] == label_i]
+        ax.scatter(mds_coords[rows,0], mds_coords[rows,1], c=color_dict[label_i], s=23, label=label_i)
+    plt.legend(bbox_to_anchor=(1.03,0.5), loc="center left", borderaxespad=0)
+    plt.xlim(xlim)
+    plt.ylim(ylim)
+    plt.savefig("%s_MDS_%s.pdf" % (reactivities_prefix, suffix_string), bbox_inches="tight")
+    plt.clf()

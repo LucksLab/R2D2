@@ -23,21 +23,28 @@ import math
 
 # setup environment variables
 LucksLabUtils_config.config("Quest_R2D2")
-opts = OSU.getopts("o:", ["pairs_dir=", "rhos_dir="])
+opts = OSU.getopts("o:", ["pairs_dir=", "rhos_dir=", "max_length="])
 print opts
 
-output_dir = OSU.create_directory(opts['-o'])
+output_dir = OSU.create_directory(opts['-o']) + "/"
 pairs_dir = opts['--pairs_dir']
-rhos_dir = opts['--rhos_dir']
+rhos_dir = opts['--rhos_dir'] if '--rhos_dir' in opts else None
+max_length = int(opts['--max_length']) if '--max_length' in opts else -1
 
 rhos = {}
-for rf in glob.glob(rhos_dir+"/*_reactivities.rho"):
-    # read in each rho reactivitiy spectra
-    with open(rf, "r") as f:
-        rho = [line.split()[1] for line in f.readlines()]
-        rhos[len(rho)] = [rho, rf]  # add in rho file here
-seq_start = min(rhos.keys())
-seq_end = max(rhos.keys())
+if rhos_dir is not None:
+    for rf in glob.glob(rhos_dir+"/*_reactivities.rho"):
+        # read in each rho reactivitiy spectra
+        with open(rf, "r") as f:
+            rho = [line.split()[1] for line in f.readlines()]
+            rhos[len(rho)] = [rho, rf]  # add in rho file here
+    seq_start = min(rhos.keys())
+    seq_end = max(rhos.keys())
+elif max_length != -1:
+    seq_end = max_length
+else:
+    print "WARNING: assuming max length of RNA is 9999 for output purposes"
+    seq_end = 9999
 zero_padding = int(math.floor(math.log10(seq_end)) + 1)
 
 for pf in glob.glob(pairs_dir+"/*.pairs"):
